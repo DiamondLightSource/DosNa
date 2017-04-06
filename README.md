@@ -1,2 +1,2 @@
 # DosNa
-Distributed Object Store Numpy Array (DosNa)
+Distributed Object-Store Numpy Array (DosNa)
