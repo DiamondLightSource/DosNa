@@ -22,6 +22,7 @@ class DatasetTest(unittest.TestCase):
         self.test_pool = self.C[self.test_pool_name]
 
     def tearDown(self):
+        self.test_pool.close()
         self.C.delete_pool(self.test_pool.name)
         self.C.disconnect()
 
@@ -101,7 +102,7 @@ class DatasetTest(unittest.TestCase):
 
     def test_validate_slicing(self):
         data = np.random.randn(100, 100, 100)
-        for chunks in [26, 37, 41, 59, 63]:
+        for chunks in np.random.randint(20, 100, size=10):
             ds = self.test_pool.create_dataset('dummy', data=data, chunks=chunks)
             self.check_slicing(ds, data)
             ds.delete()
@@ -129,6 +130,28 @@ class DatasetTest(unittest.TestCase):
         np.testing.assert_array_equal(dndata[7:, ..., :5], npdata[7:, ..., :5])
         np.testing.assert_array_equal(dndata[50, 50, 50], npdata[50, 50, 50])
         np.testing.assert_array_equal(dndata[30:50, 30:50, 30:50], npdata[30:50, 30:50, 30:50])
+
+    def test_validate_slice_writing(self):
+        data = np.random.randn(100, 100, 100)
+        for chunks in np.random.randint(20, 100, size=10):
+            ds = self.test_pool.create_dataset('dummy', data=data, chunks=chunks)
+            self.check_slice_writing(ds, data)
+            ds.delete()
+
+    def check_slice_writing(self, dndata, npdata, ntests=10):
+        for i in range(ntests):
+            slices = []
+            sizes = []
+            for shape in dndata.shape:
+                size = np.random.randint(1, shape)
+                start = np.random.randint(max(1, shape - size - 1))
+                sizes.append(size)
+                slices.append(slice(start, start+size))
+            new_data = np.random.randn(*sizes)
+            dndata[slices] = new_data
+            npdata[slices] = new_data
+            np.testing.assert_array_equal(dndata[slices], npdata[slices])
+
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr)

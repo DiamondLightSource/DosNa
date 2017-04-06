@@ -157,13 +157,13 @@ class Dataset(BaseData):
     # DATASET SLICING
     ###########################################################
 
-    def __prepare_slices(self, slices):
+    def __process_slices(self, slices, detect_squeeze=False):
         # Support single axis slicing
         if type(slices) in [slice, int]:
             slices = [slices]
         elif slices is Ellipsis:
             slices = [slice(None)]
-        elif type(slices) != tuple:
+        elif type(slices) not in [list, tuple]:
             raise DatasetException('Invalid Slicing with index of type {}'.format(type(slices)))
         else:
             slices = list(slices)
@@ -208,47 +208,62 @@ class Dataset(BaseData):
                 raise DatasetException('Invalid type {} in slicing, only integer or'
                                        ' slices are supported'.format(type(s)))
 
-        return final_slices, squeeze_axis
+        if detect_squeeze:
+            return final_slices, squeeze_axis
+        return final_slices
 
-    def __calc_involved_chunks(self, slices):
-        targets = []
-        pad_starts = []
-        pad_stops = []
+    def __get_chunk_slice_iterator(self, slices):
+        indexes = []
+        ltargets = []
+        gtargets = []
         for slice_axis, chunk_axis_size, max_chunks in zip(slices, self.chunk_size, self.chunks):
             start_chunk = slice_axis.start // chunk_axis_size
             end_chunk = min(slice_axis.stop // chunk_axis_size, max_chunks-1)
             pad_start = slice_axis.start - start_chunk * chunk_axis_size
-            pad_end = slice_axis.stop - max(0, end_chunk) * chunk_axis_size
-            targets.append(range(start_chunk, end_chunk+1))
-            pad_starts.append(pad_start)
-            pad_stops.append(pad_end)
-        return targets, pad_starts, pad_stops
+            pad_stop = slice_axis.stop - max(0, end_chunk) * chunk_axis_size
+            ltarget = []
+            gtarget = []
+            index = []
+            for i in range(start_chunk, end_chunk+1):
+                start = pad_start if i == start_chunk else 0
+                stop = pad_stop if i == end_chunk else chunk_axis_size
+                ltarget.append(slice(start, stop))
+                gchunk = i * chunk_axis_size - slice_axis.start
+                gtarget.append(slice(gchunk + start, gchunk + stop))
+                index.append(i)
+            ltargets.append(ltarget)
+            gtargets.append(gtarget)
+            indexes.append(index)
+
+        def __chunk_iterator():
+            for idx in np.ndindex(*[len(chunks_axis) for chunks_axis in indexes]):
+                _index = []; _lslice = []; _gslice = []
+                for n, j in enumerate(idx):
+                    _index.append(indexes[n][j])
+                    _lslice.append(ltargets[n][j])
+                    _gslice.append(gtargets[n][j])
+                yield tuple(_index), _lslice, _gslice
+        return __chunk_iterator
 
     def __getitem__(self, slices):
-        slices, squeeze_axis = self.__prepare_slices(slices)
+        slices, squeeze_axis = self.__process_slices(slices, detect_squeeze=True)
         tshape = [x.stop - x.start for x in slices]
         output = np.full(tshape, -1, dtype=self.dtype)
-        target, pstart, pstop = self.__calc_involved_chunks(slices)
+        chunk_iterator = self.__get_chunk_slice_iterator(slices)
 
-        for chunkidx in itertools.product(*target):
-            cslices = []
-            gslices = []
-            for i, idx in enumerate(chunkidx):
-                start = 0
-                stop = self.chunk_size[i]
-                if idx == target[i][0]:
-                    start = pstart[i]
-                if idx == target[i][-1]:
-                    stop = pstop[i]
-                cslices.append(slice(start, stop))
-                t = idx * self.chunk_size[i] + start - slices[i].start
-                gslices.append(slice(t, t + stop - start))
-            output[gslices] = self.get_chunk(chunkidx)[cslices]
+        for idx, cslice, gslice in chunk_iterator():
+            output[gslice] = self.get_chunk(idx)[cslice]
 
         if len(squeeze_axis) > 0:
             return np.squeeze(output, axis=squeeze_axis)  # Creates a view
         return output
 
+    def __setitem__(self, slices, input):
+        slices = self.__process_slices(slices)
+        chunk_iterator = self.__get_chunk_slice_iterator(slices)
+
+        for idx, cslice, gslice in chunk_iterator():
+            self.get_chunk(idx)[cslice] = input[gslice]
 
     ###########################################################
     # PROPERTIES
@@ -364,8 +379,12 @@ class Dataset(BaseData):
             return np.asarray(shape, int)
         elif type(chunks) == int:
             return np.asarray([chunks] * len(shape), int)
-        elif hasattr(chunks, '__getitem__') and len(chunks) == len(shape):
+        elif hasattr(chunks, '__iter__') and len(chunks) == len(shape):
             return np.asarray(chunks, int)
+        try:
+            return np.asarray([int(chunks)] * len(shape), int)
+        except ValueError:
+            pass
         raise DatasetException('Dimension of chunks does not match the data shape')
 
     def __chunkname(self, chunk_idx):

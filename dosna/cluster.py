@@ -14,6 +14,7 @@ class Pool(object):
 
     def __init__(self, cluster, name):
         self.name = name
+        self.__cluster = cluster
         self.__ioctx = cluster.open_ioctx(name)
 
     def __getattr__(self, attr):
@@ -65,6 +66,9 @@ class Pool(object):
             return False
         return True
 
+    def delete(self):
+        self.__cluster.delete_pool(self.name)
+
 
 class Cluster(object):
 
@@ -100,7 +104,7 @@ class Cluster(object):
     def __enter__(self):
         if not self.connected:
             self.connect()
-        return self.cluster
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connected:
@@ -128,8 +132,8 @@ class Cluster(object):
     def create_pool(self, pool_name, auid=None, crush_rule=None):
         if self.has_pool(pool_name):
             raise ClusterException('Pool {} already exists'.format(pool_name))
-        pool = self.cluster.create_pool(pool_name, auid=auid, crush_rule=crush_rule)
-        return pool
+        self.cluster.create_pool(pool_name, auid=auid, crush_rule=crush_rule)
+        return self.get_pool(pool_name)
 
     def delete_pool(self, pool_name):
         if self.has_pool(pool_name):
