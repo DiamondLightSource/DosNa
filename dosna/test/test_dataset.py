@@ -17,7 +17,7 @@ class DatasetTest(unittest.TestCase):
         self.log = logging.getLogger(self.__class__.__name__)
         self.log.setLevel(logging.DEBUG)
         self.C = dn.Cluster().connect()
-        self.test_pool_name = 'test_' + str(int(time.time()))
+        self.test_pool_name = 'test_dosna_' + str(int(time.time()))
         self.C.create_pool(self.test_pool_name)
         self.test_pool = self.C[self.test_pool_name]
 

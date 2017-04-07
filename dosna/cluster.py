@@ -1,5 +1,6 @@
 
 
+import time
 import rados
 import logging
 
@@ -72,6 +73,9 @@ class Pool(object):
 
 class Cluster(object):
 
+    __random_pool_prefix__ = 'dosna_random_'
+    __test_pool_prefix__ = 'test_dosna_'
+
     def __init__(self, conffile='ceph.conf', logger=logging):
         self.__cluster = None # Prevent exception tests from failling
         self.__cluster = rados.Rados(conffile=conffile)
@@ -127,9 +131,14 @@ class Cluster(object):
     ###########################################################
 
     def pools(self):
-        return self.cluster.list_pools()
+        return [self.get_pool(name) for name in self.cluster.list_pools()]
 
-    def create_pool(self, pool_name, auid=None, crush_rule=None):
+    list_pools = pools
+
+    def create_pool(self, pool_name=None, auid=None, crush_rule=None, test=False):
+        if pool_name is None:
+            pool_prefix = "dosna_random_" if not test else 'test_dosna_'
+            pool_name = pool_prefix + str(time.time())
         if self.has_pool(pool_name):
             raise ClusterException('Pool {} already exists'.format(pool_name))
         self.cluster.create_pool(pool_name, auid=auid, crush_rule=crush_rule)

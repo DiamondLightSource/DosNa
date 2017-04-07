@@ -8,6 +8,8 @@ import numpy as np
 
 from .utils import shape2str, str2shape, dtype2str
 
+from cStringIO import StringIO
+
 
 class DatasetException(Exception):
     pass
@@ -19,29 +21,35 @@ class BaseData(object):
         self.__pool = pool
         self.name = name
 
+        self.__shape = str2shape(self.__pool.get_xattr(self.name, 'shape'))
+        self.__ndim = len(self.__shape)
+        self.__size = np.prod(self.__shape)
+        self.__dtype = self.__pool.get_xattr(self.name, 'dtype')
+        self.__itemsize = np.dtype(self.__dtype).itemsize
+
     ###########################################################
     # PROPERTIES
     ###########################################################
 
     @property
     def shape(self):
-        return str2shape(self.__pool.get_xattr(self.name, 'shape'))
+        return self.__shape
 
     @property
     def ndim(self):
-        return len(self.shape)
+        return self.__ndim
 
     @property
     def size(self):
-        return np.prod(self.shape)
+        return self.__size
 
     @property
     def dtype(self):
-        return self.__pool.get_xattr(self.name, 'dtype')
+        return self.__dtype
 
     @property
     def itemsize(self):
-        return np.dtype(self.dtype).itemsize
+        return self.__itemsize
 
     @property
     def pool(self):
@@ -75,7 +83,7 @@ class DataChunk(BaseData):
     def __init__(self, pool, name):
         super(DataChunk, self).__init__(pool, name)
         if not pool.has_chunk(name):
-            raise DatasetException('No chunk {} found on pool {}'
+            raise DatasetException('No chunk `{}` found on pool `{}`'
                                    .format(name, pool.name))
 
     ###########################################################
@@ -99,8 +107,9 @@ class DataChunk(BaseData):
 
     def set_data(self, data):
         if data.shape != self.shape:
-            raise DatasetException('Cannot set chunk of shape {} with data of shape {}'
+            raise DatasetException('Cannot set chunk of shape `{}` with data of shape `{}`'
                                    .format(self.shape, data.shape))
+
         self.write(data.tobytes())
 
     ###########################################################
@@ -122,7 +131,7 @@ class DataChunk(BaseData):
             cdata = np.full(shape, fillvalue, dtype=dtype)
             cdata[slices] = data
         else:
-            raise DatasetException('Data shape {} does not match chunk shape {}'
+            raise DatasetException('Data shape `{}` does not match chunk shape `{}`'
                                    .format(data.shape, shape))
 
         pool.write(name, cdata.tobytes())
@@ -135,7 +144,7 @@ class DataChunk(BaseData):
     ###########################################################
 
     def write(self, data):
-        self.pool.write(self.name, data)
+        self.pool.write_full(self.name, data)
 
     def read(self, length=None, offset=0):
         if length is None:
@@ -147,24 +156,34 @@ class Dataset(BaseData):
 
     __signature__ = 'DOSD.Dataset'
 
-    def __init__(self, pool, name):
-        super(Dataset, self).__init__(pool, name)
-        if not pool.has_dataset(name):
-            raise DatasetException('No dataset {} found in pool {}'
+    def __init__(self, pool, name, data=None, chunks=None):
+        if data is None and not pool.has_dataset(name):
+            raise DatasetException('No dataset `{}` found in pool `{}`'
                                    .format(name, pool.name))
+        elif data is not None:
+            Dataset.create(pool, name, data=data, chunks=chunks)
+
+        super(Dataset, self).__init__(pool, name)
+
+        self.__fillvalue = np.dtype(self.dtype).type(self.get_xattr('fillvalue'))
+        self.__chunks = str2shape(self.get_xattr('chunks'))
+        self.__chunk_size = str2shape(self.get_xattr('chunk_size'))
+        self.__chunk_bytes = np.prod(self.__chunk_size) * self.itemsize
+        self.__total_chunks = np.prod(self.__chunks)
+
 
     ###########################################################
     # DATASET SLICING
     ###########################################################
 
-    def __process_slices(self, slices, detect_squeeze=False):
+    def _process_slices(self, slices, detect_squeeze=False):
         # Support single axis slicing
         if type(slices) in [slice, int]:
             slices = [slices]
         elif slices is Ellipsis:
             slices = [slice(None)]
         elif type(slices) not in [list, tuple]:
-            raise DatasetException('Invalid Slicing with index of type {}'.format(type(slices)))
+            raise DatasetException('Invalid Slicing with index of type `{}`'.format(type(slices)))
         else:
             slices = list(slices)
 
@@ -177,7 +196,7 @@ class Dataset(BaseData):
             if len(slices) < self.ndim:
                 slices = list(slices) + ([slice(None)] * nmiss)
         elif len(slices) > self.ndim:
-            raise DatasetException('Invalid slicing of dataset of dimension {}'
+            raise DatasetException('Invalid slicing of dataset of dimension `{}`'
                                    ' with {}-dimensional slicing'
                                    .format(self.ndim, len(slices)))
         # Wrap integer slicing and `:` slicing
@@ -196,23 +215,23 @@ class Dataset(BaseData):
                 if stop is None:
                     stop = shape[i]
                 if start < 0 or start >= self.shape[i]:
-                    raise DatasetException('Only possitive and in-bounds slicing supported: {}'
+                    raise DatasetException('Only possitive and in-bounds slicing supported: `{}`'
                                            .format(slices))
                 if stop < 0 or stop > self.shape[i] or stop < start:
-                    raise DatasetException('Only possitive and in-bounds slicing supported: {}'
+                    raise DatasetException('Only possitive and in-bounds slicing supported: `{}`'
                                            .format(slices))
                 if s.step is not None and s.step != 1:
                     raise DatasetException('Only slicing with step 1 supported')
                 final_slices.append(slice(start, stop))
             else:
-                raise DatasetException('Invalid type {} in slicing, only integer or'
+                raise DatasetException('Invalid type `{}` in slicing, only integer or'
                                        ' slices are supported'.format(type(s)))
 
         if detect_squeeze:
             return final_slices, squeeze_axis
         return final_slices
 
-    def __get_chunk_slice_iterator(self, slices):
+    def _get_chunk_slice_iterator(self, slices):
         indexes = []
         ltargets = []
         gtargets = []
@@ -246,24 +265,24 @@ class Dataset(BaseData):
         return __chunk_iterator
 
     def __getitem__(self, slices):
-        slices, squeeze_axis = self.__process_slices(slices, detect_squeeze=True)
+        slices, squeeze_axis = self._process_slices(slices, detect_squeeze=True)
         tshape = [x.stop - x.start for x in slices]
         output = np.full(tshape, -1, dtype=self.dtype)
-        chunk_iterator = self.__get_chunk_slice_iterator(slices)
+        chunk_iterator = self._get_chunk_slice_iterator(slices)
 
         for idx, cslice, gslice in chunk_iterator():
-            output[gslice] = self.get_chunk(idx)[cslice]
+            output[gslice] = self._get_chunk(idx)[cslice]
 
         if len(squeeze_axis) > 0:
             return np.squeeze(output, axis=squeeze_axis)  # Creates a view
         return output
 
-    def __setitem__(self, slices, input):
-        slices = self.__process_slices(slices)
-        chunk_iterator = self.__get_chunk_slice_iterator(slices)
+    def __setitem__(self, slices, values):
+        slices = self._process_slices(slices)
+        chunk_iterator = self._get_chunk_slice_iterator(slices)
 
         for idx, cslice, gslice in chunk_iterator():
-            self.get_chunk(idx)[cslice] = input[gslice]
+            self._get_chunk(idx)[cslice] = values[gslice]
 
     ###########################################################
     # PROPERTIES
@@ -271,28 +290,23 @@ class Dataset(BaseData):
 
     @property
     def fillvalue(self):
-        fillvalue_str = self.get_xattr('fillvalue')
-        return np.dtype(self.dtype).type(fillvalue_str)
+        return self.__fillvalue
 
     @property
     def chunks(self):
-        return str2shape(self.get_xattr('chunks'))
+        return self.__chunks
 
     @property
     def chunk_size(self):
-        return str2shape(self.get_xattr('chunk_size'))
+        return self.__chunk_size
 
     @property
     def chunk_bytes(self):
-        return np.prod(self.chunk_size) * self.itemsize
-
-    @property
-    def chunk_id(self):
-        return self.get_xattr('chunk_id')
+        return self.__chunk_bytes
 
     @property
     def total_chunks(self):
-        return np.prod(self.chunks)
+        return self.__total_chunks
 
     ###########################################################
     # DATASET CREATION / DELETION
@@ -335,7 +349,7 @@ class Dataset(BaseData):
     def create(cls, pool, name, shape=None, dtype=None, fillvalue=-1, chunks=None, data=None):
         try:
             pool.stat(name)
-            raise DatasetException('Object {} already exists in pool')
+            raise DatasetException('Object `{}` already exists in pool `{}`'.format(name, pool.name))
         except rados.ObjectNotFound:
             pass
 
@@ -345,7 +359,6 @@ class Dataset(BaseData):
 
         chunk_size = cls.__validate_chunk_shape(chunks, shape)
         chunks_needed = (np.ceil(np.asarray(shape, float) / chunk_size)).astype(int)
-        chunk_id = str(int(time.time()))
 
         pool.write(name, cls.__signature__)
         pool.set_xattr(name, 'shape', shape2str(shape))
@@ -354,7 +367,6 @@ class Dataset(BaseData):
 
         pool.set_xattr(name, 'chunks', shape2str(chunks_needed))
         pool.set_xattr(name, 'chunk_size', shape2str(chunk_size))
-        pool.set_xattr(name, 'chunk_id', chunk_id)
 
         ds = cls(pool, name)
 
@@ -362,12 +374,6 @@ class Dataset(BaseData):
             ds.load(data)
 
         return ds
-
-    def delete(self, delete_chunks=True):
-        if delete_chunks:
-            for idx in np.ndindex(*self.chunks):
-                self._delete_chunk(idx)
-        super(Dataset, self).delete()
 
     ###########################################################
     # CHUNK NAMING AND VALIDATION
@@ -388,78 +394,96 @@ class Dataset(BaseData):
         raise DatasetException('Dimension of chunks does not match the data shape')
 
     def __chunkname(self, chunk_idx):
-        chunk_str = '.'.join(map(str, chunk_idx))
-        return 'DataChunk.{}.{}_{}'.format(self.chunk_id, self.name, chunk_str)
+        name = 'DataChunk.' + self.name + '.'
+        name += '.'.join(map(str, chunk_idx))
+        return name
 
-    ###########################################################
-    # CHUNK MANAGEMENT
-    ###########################################################
-
-    def __validate_chunk_index(self, idx):
-        if len(idx) == 1 and type(idx[0]) == tuple:
+    def _transform_chunk_index(self, idx):
+        if type(idx) == int:
+            idx = [idx]
+        elif type(idx[0]) in [tuple, list] and len(idx) == 1:
             idx = idx[0]
+
         # Support flat indexing
         if len(idx) == 1 and self.ndim > 1 and idx < self.total_chunks:
-            idx = tuple(i[0] for i in np.unravel_index(idx, self.chunks))
-        idx = tuple(idx)  # Safe
+            idx = np.unravel_index(idx[0], self.chunks)
         if len(idx) == len(self.shape):
-            if any(c1 >= c2 for c1, c2 in zip(idx, self.chunks)):
-                raise DatasetException('Out of limits chunk indexing of chunk {} with grid {}'
+            if any(c1 >= c2 for c1, c2 in itertools.izip(idx, self.chunks)):
+                raise DatasetException('Out of limits chunk indexing of chunk `{}` with grid `{}`'
                                        .format(idx, self.chunks))
         else:
-            raise DatasetException('Incorrect chunk indexing format {}'.format(idx))
+            raise DatasetException('Incorrect chunk indexing format `{}`'.format(idx))
         return idx
 
+    ###########################################################
+    # PUBLIC CHUNK MANAGEMENT
+    ###########################################################
+
     def has_chunk(self, *chunk_idx):
-        chunk_idx = self.__validate_chunk_index(chunk_idx)
-        return self.pool.has_chunk(self.__chunkname(chunk_idx))
+        chunk_idx = self._transform_chunk_index(chunk_idx)
+        return self._has_chunk(chunk_idx)
 
     def get_chunk(self, *chunk_idx):
-        chunk_idx = self.__validate_chunk_index(chunk_idx)
-
-        if self.has_chunk(chunk_idx):
-            return DataChunk(self.pool, self.__chunkname(chunk_idx))
-        else:
-            return self._create_chunk(chunk_idx)
+        chunk_idx = self._transform_chunk_index(chunk_idx)
+        if self._has_chunk(chunk_idx):
+            return self._get_existing_chunk(chunk_idx)
+        return self._create_chunk(chunk_idx)
 
     def get_chunk_data(self, *chunk_idx):
-        chunk_idx = self.__validate_chunk_index(chunk_idx)
-
-        if self.has_chunk(chunk_idx):
-            return DataChunk(self.pool, self.__chunkname(chunk_idx)).get_data()
+        chunk_idx = self._transform_chunk_index(chunk_idx)
+        if self._has_chunk(chunk_idx):
+            return self._get_existing_chunk_data(chunk_idx)
         else:
             return np.full(self.chunk_size, self.fillvalue, self.dtype)
 
-    def set_chunk(self, chunk_idx, data):
-        if self.has_chunk(chunk_idx):
-            self.get_chunk(chunk_idx).set_data(data)
+    def set_chunk_data(self, chunk_idx, data):
+        chunk_idx = self._transform_chunk_index(chunk_idx)
+        if self._has_chunk(chunk_idx):
+            self._get_existing_chunk(chunk_idx).set_data(data)
         else:
             self._create_chunk(chunk_idx, data=data)
 
+    ###########################################################
+    # PRIVATE CHUNK MANAGEMENT
+    ###########################################################
+
+    def _has_chunk(self, chunk_idx):
+        return self.pool.has_chunk(self.__chunkname(chunk_idx))
+
+    def _get_chunk(self, chunk_idx):
+        if self._has_chunk(chunk_idx):
+            return self._get_existing_chunk(chunk_idx)
+        return None
+
+    def _get_existing_chunk(self, chunk_idx):
+        return DataChunk(self.pool, self.__chunkname(chunk_idx))
+
+    def _get_existing_chunk_data(self, chunk_idx):
+        return self._get_existing_chunk(chunk_idx).get_data()
+
     def _create_chunk(self, chunk_idx, data=None):
-        chunk_idx = self.__validate_chunk_index(chunk_idx)
         return DataChunk.create(self.pool, self.__chunkname(chunk_idx),
                                 shape=self.chunk_size, dtype=self.dtype,
                                 fillvalue=self.fillvalue, data=data)
 
-    def _delete_chunk(self, *chunk_idx):
-        chunk_idx = self.__validate_chunk_index(chunk_idx)
-        if self.has_chunk(chunk_idx):
-            self.get_chunk(chunk_idx).delete()
+    def _delete_chunk(self, chunk_idx):
+        if self._has_chunk(chunk_idx):
+            chunk = self._get_existing_chunk(chunk_idx)
+            chunk.delete()
 
     ###########################################################
     # DATA MANAGEMENT
     ###########################################################
 
     def load(self, data):
-        for idx in np.ndindex(*self.chunks):
+        chunks = self.chunks
+        for idx in np.ndindex(*chunks):
             slices = [slice(i * s, min((i + 1) * s, self.shape[j]))
                       for j, (i, s) in enumerate(zip(idx, self.chunk_size))]
-            self.set_chunk(idx, data[slices])
+            self.set_chunk_data(idx, data[slices])
 
-
-
-
-
-
-
+    def delete(self, delete_chunks=True):
+        if delete_chunks:
+            for idx in np.ndindex(*self.chunks):
+                self._delete_chunk(idx)
+        super(Dataset, self).delete()

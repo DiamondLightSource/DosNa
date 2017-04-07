@@ -43,7 +43,7 @@ class ClusterTest(unittest.TestCase):
 
     def test_pool_creation(self):
         self.C.connect()
-        dummy_name = 'test_' + str(int(time.time()))
+        dummy_name = 'test_dosna_' + str(int(time.time()))
 
         self.C.create_pool(dummy_name)
         self.new_pools.append(dummy_name)
