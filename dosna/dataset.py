@@ -17,9 +17,10 @@ class DatasetException(Exception):
 
 class BaseData(object):
 
-    def __init__(self, pool, name):
+    def __init__(self, pool, name, read_only):
         self.__pool = pool
         self.name = name
+        self.read_only = read_only
 
         self.__shape = str2shape(self.__pool.get_xattr(self.name, 'shape'))
         self.__ndim = len(self.__shape)
@@ -80,8 +81,8 @@ class BaseData(object):
 
 class DataChunk(BaseData):
 
-    def __init__(self, pool, name):
-        super(DataChunk, self).__init__(pool, name)
+    def __init__(self, pool, name, read_only=False):
+        super(DataChunk, self).__init__(pool, name, read_only)
         if not pool.has_chunk(name):
             raise DatasetException('No chunk `{}` found on pool `{}`'
                                    .format(name, pool.name))
@@ -123,8 +124,9 @@ class DataChunk(BaseData):
                 cdata = np.zeros(shape, dtype)
             else:
                 cdata = np.full(shape, fillvalue, dtype=dtype)
-        elif data.shape == shape:
+        elif shape is None or data.shape == shape:
             cdata = data
+            shape = data.shape
             dtype = data.dtype
         elif all(ds <= cs for ds, cs in zip(data.shape, shape)):
             slices = [slice(ds) for ds in data.shape]
@@ -134,7 +136,7 @@ class DataChunk(BaseData):
             raise DatasetException('Data shape `{}` does not match chunk shape `{}`'
                                    .format(data.shape, shape))
 
-        pool.write(name, cdata.tobytes())
+        pool.write_full(name, cdata.tobytes())
         pool.set_xattr(name, 'shape', shape2str(shape))
         pool.set_xattr(name, 'dtype', dtype2str(dtype))
         return cls(pool, name)
@@ -154,16 +156,16 @@ class DataChunk(BaseData):
 
 class Dataset(BaseData):
 
-    __signature__ = 'DOSD.Dataset'
+    __signature__ = 'DosNa.Dataset'
 
-    def __init__(self, pool, name, data=None, chunks=None):
-        if data is None and not pool.has_dataset(name):
+    def __init__(self, pool, name, data=None, chunks=None, read_only=False):
+        if (data is None or read_only) and not pool.has_dataset(name):
             raise DatasetException('No dataset `{}` found in pool `{}`'
                                    .format(name, pool.name))
         elif data is not None:
             Dataset.create(pool, name, data=data, chunks=chunks)
 
-        super(Dataset, self).__init__(pool, name)
+        super(Dataset, self).__init__(pool, name, read_only)
 
         self.__fillvalue = np.dtype(self.dtype).type(self.get_xattr('fillvalue'))
         self.__chunks = str2shape(self.get_xattr('chunks'))
@@ -278,6 +280,8 @@ class Dataset(BaseData):
         return output
 
     def __setitem__(self, slices, values):
+        if self.read_only:
+            raise DatasetException('Dataset {} is read-only'.format(self.name))
         slices = self._process_slices(slices)
         chunk_iterator = self._get_chunk_slice_iterator(slices)
 
@@ -346,7 +350,7 @@ class Dataset(BaseData):
                           chunks=chunks, fillvalue=fillvalue)
 
     @classmethod
-    def create(cls, pool, name, shape=None, dtype=None, fillvalue=-1, chunks=None, data=None):
+    def create(cls, pool, name, shape=None, dtype=None, fillvalue=-1, chunks=None, data=None, read_only=False):
         try:
             pool.stat(name)
             raise DatasetException('Object `{}` already exists in pool `{}`'.format(name, pool.name))
@@ -368,7 +372,7 @@ class Dataset(BaseData):
         pool.set_xattr(name, 'chunks', shape2str(chunks_needed))
         pool.set_xattr(name, 'chunk_size', shape2str(chunk_size))
 
-        ds = cls(pool, name)
+        ds = cls(pool, name, read_only=read_only)
 
         if data is not None:
             ds.load(data)

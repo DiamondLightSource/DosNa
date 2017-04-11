@@ -4,7 +4,7 @@ cluster = rados.Rados(conffile='ceph.conf')
 print "\nlibrados version: " + str(cluster.version())
 print "Will attempt to connect to: " + str(cluster.conf_get('mon initial members'))
 
-cluster.connect()
+cluster.connect(timeout=3)
 print "\nCluster ID: " + cluster.get_fsid()
 
 print "\n\nCluster Statistics"

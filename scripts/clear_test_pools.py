@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser.set_defaults(remove_randoms=False)
     args = parser.parse_args()
 
-    with dn.Cluster(conffile=conffile) as C:
+    with dn.Cluster(conffile=conffile, timeout=5) as C:
         for pool in C.list_pools():
             if pool.name.startswith(C.__test_pool_prefix__):
                 print("Removing", pool.name)
