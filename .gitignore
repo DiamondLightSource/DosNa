@@ -6,6 +6,7 @@ __pycache__/
 # This project
 ceph.conf
 *.npy
+test_dosna*
 
 # C extensions
 *.so
