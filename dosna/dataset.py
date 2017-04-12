@@ -1,9 +1,7 @@
 
 
 import rados
-import time
 
-import os
 import itertools
 import numpy as np
 
@@ -13,158 +11,13 @@ from joblib.pool import has_shareable_memory
 from itertools import izip, repeat
 
 
+from .base import BaseData
+from .chunks import DataChunk
 from .utils import shape2str, str2shape, dtype2str
 
 
 class DatasetException(Exception):
     pass
-
-
-class BaseData(object):
-
-    def __init__(self, pool, name, read_only):
-        self._pool = pool
-        self.name = name
-        self.read_only = read_only
-
-        self._shape = str2shape(self._pool.get_xattr(self.name, 'shape'))
-        self._ndim = len(self._shape)
-        self._size = np.prod(self._shape)
-        self._dtype = self._pool.get_xattr(self.name, 'dtype')
-        self._itemsize = np.dtype(self._dtype).itemsize
-
-    ###########################################################
-    # PROPERTIES
-    ###########################################################
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def ndim(self):
-        return self._ndim
-
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def itemsize(self):
-        return self._itemsize
-
-    @property
-    def pool(self):
-        return self._pool
-
-    ###########################################################
-    # BINDINGS to lower-level pool
-    ###########################################################
-
-    def get_xattrs(self):
-        return self._pool.get_xattrs(self.name)
-
-    def get_xattr(self, name):
-        return self._pool.get_xattr(self.name, name)
-
-    def set_xattr(self, name, value):
-        return self._pool.set_xattr(self.name, name, value)
-
-    def rm_xattr(self, name):
-        return self._pool.rm_xattr(self.name, name)
-
-    def stat(self):
-        return self._pool.stat(self.name)
-
-    def delete(self):
-        return self._pool.remove_object(self.name)
-
-
-class DataChunk(BaseData):
-
-    def __init__(self, pool, name, read_only=False):
-        super(DataChunk, self).__init__(pool, name, read_only)
-        if not pool.has_chunk(name):
-            raise DatasetException('No chunk `{}` found on pool `{}`'
-                                   .format(name, pool.name))
-
-    ###########################################################
-    # DATA READING/WRITING
-    ###########################################################
-
-    def __getitem__(self, slices):
-        return self.get_slices(slices)
-
-    def __setitem__(self, slices, value=-1):
-        self.set_slices(slices, value)
-
-    def get_data(self):
-        n = np.prod(self.shape)
-        data = np.fromstring(self.read(), dtype=self.dtype, count=n)
-        data.shape = self.shape  # in-place reshape
-        return data
-
-    def set_data(self, data):
-        if data.shape != self.shape:
-            raise DatasetException('Cannot set chunk of shape `{}` with data of shape `{}`'
-                                   .format(self.shape, data.shape))
-        self.write(data.tobytes())
-
-    def get_slices(self, slices):
-        return self.get_data()[slices]
-
-    def set_slices(self, slices, value):
-        data = self.get_data()
-        data[slices] = value
-        self.write(data.tobytes())
-
-
-    ###########################################################
-    # CREATION
-    ###########################################################
-
-    @classmethod
-    def create(cls, pool, name, shape=None, dtype=None, fillvalue=None, data=None, slices=None):
-        if data is None:
-            if fillvalue is None:
-                cdata = np.zeros(shape, dtype)
-            else:
-                cdata = np.full(shape, fillvalue, dtype=dtype)
-        else:
-            if slices is not None:
-                data = data[slices]
-
-            if shape is None or data.shape == shape:
-                cdata = data
-                shape = data.shape
-                dtype = data.dtype
-            elif all(ds <= cs for ds, cs in zip(data.shape, shape)):
-                cdata = np.full(shape, fillvalue, dtype=dtype)
-                cdata[slices] = data
-            else:
-                raise DatasetException('Data shape `{}` does not match chunk shape `{}`'
-                                       .format(data.shape, shape))
-
-        pool.write_full(name, cdata.tobytes())
-        pool.set_xattr(name, 'shape', shape2str(shape))
-        pool.set_xattr(name, 'dtype', dtype2str(dtype))
-        return cls(pool, name)
-
-    ###########################################################
-    # BINDINGS to lower-level pool object
-    ###########################################################
-
-    def write(self, data):
-        self.pool.write_full(self.name, data)
-
-    def read(self, length=None, offset=0):
-        if length is None:
-            length = self.size * np.dtype(self.dtype).itemsize  # number of bytes
-        return self.pool.read(self.name, length=length, offset=offset)
 
 
 class Dataset(BaseData):
@@ -531,7 +384,10 @@ class Dataset(BaseData):
 
     def _set_existing_chunk_data(self, chunk_idx, data, slices=None):
         chunk = self._get_existing_chunk(chunk_idx)
-        return chunk.set_data(data) if slices is None else chunk.set_slices(slices, data)
+        if slices is not None:
+            chunk.set_slices(slices, data)
+        else:
+            chunk.set_data(data)
 
     # Create + Delete
 
@@ -561,11 +417,12 @@ class Dataset(BaseData):
         chunks = self.chunks
         if self.njobs is None or self.njobs == 1:
             for idx in np.ndindex(*chunks):
-                slices = self._gchunk_bounds_slices(idx)
-                self._set_chunk_data(idx, data, slices=slices)
+                gslices = self._gchunk_bounds_slices(idx)
+                lslices = self._lchunk_bounds_slices(idx)
+                self._set_chunk_data(idx, data[gslices], slices=lslices)
         else:
             Parallel(n_jobs=self.njobs, backend="threading")(
-                delayed(_populate_dataset)(self, idx, data, self._gchunk_bounds_slices(idx))
+                delayed(_populate_dataset)(self, idx, data)
                 for idx in np.ndindex(*chunks)
             )
 
@@ -616,8 +473,10 @@ class Dataset(BaseData):
 
 # Parallel bindings
 
-def _populate_dataset(inst, idx, data, slices):
-    inst._set_chunk_data(idx, data, slices=slices)
+def _populate_dataset(inst, idx, data):
+    gslices = inst._gchunk_bounds_slices(idx)
+    lslices = inst._lchunk_bounds_slices(idx)
+    inst._set_chunk_data(idx, data[gslices], slices=lslices)
 
 
 def _get_chunk_data_parallel(inst, chunk_idx, cslice, gslice, doutput):
