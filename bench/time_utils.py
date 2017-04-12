@@ -6,6 +6,8 @@ import time
 class Timer(object):
     def __init__(self, name='Timer'):
         self.name = name
+        self.tstart = -1
+        self.tend = -1
 
     def __enter__(self):
         self.tstart = time.time()

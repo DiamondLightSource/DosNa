@@ -19,10 +19,10 @@ if __name__ == '__main__':
 
     with dn.Cluster(conffile=conffile, timeout=5) as C:
         for pool in C.list_pools():
-            if pool.name.startswith(C.__test_pool_prefix__):
+            if pool.name.startswith(pool.__test_pool_prefix__):
                 print("Removing", pool.name)
                 pool.delete()
-            elif pool.name.startswith(C.__random_pool_prefix__) and args.remove_randoms:
+            elif pool.name.startswith(pool.__random_pool_prefix__) and args.remove_randoms:
                 print("Removing", pool.name)
                 pool.delete()
             else:

@@ -59,7 +59,7 @@ class DatasetTest(unittest.TestCase):
         # No chunk has been loaded yet, only 1 dataset should exist
         self.assertEqual(self.test_pool.object_count(), 1)
         # Get a random chunk
-        chunk = ds.get_chunk(0, 0, 1)
+        chunk = ds.get_chunk((0, 0, 1))
         self.assertEqual(ds.dtype, dn.dtype2str(int))
         self.assertEqual(ds.dtype, chunk.dtype)
         # Because data has not been loaded yet, chunks will return the default value: -1

@@ -10,7 +10,7 @@ sys.path.append(parent_folder)
 
 import rados
 import dosna as dn
-from script_utils import Timer
+from time_utils import Timer
 
 conffile = op.join(parent_folder, 'ceph.conf')
 

@@ -27,15 +27,14 @@ class ClusterException(Exception):
 class Cluster(object):
 
     default_instance__ = None
-    __random_pool_prefix__ = 'dosna_random_'
-    __test_pool_prefix__ = 'test_dosna_'
 
-    def __init__(self, conffile='ceph.conf', logger=logging, timeout=5):
-        self.__cluster = None # Prevent exception tests from failling
-        self.__cluster = rados.Rados(conffile=conffile)
-        self.__connected = False
-        self.__logger = logger
-        self.__timeout = timeout
+    def __init__(self, njobs=1, conffile='ceph.conf', logger=logging, timeout=5):
+        self._cluster = None  # Prevent exception tests from failling
+        self._cluster = rados.Rados(conffile=conffile)
+        self._connected = False
+        self._logger = logger
+        self._timeout = timeout
+        self._njobs = njobs
 
     def __del__(self):
         if self.connected:
@@ -56,15 +55,15 @@ class Cluster(object):
     ###########################################################
 
     def connect(self):
-        self.__logger.info('Connected to cluster')
-        self.__cluster.connect(timeout=self.__timeout)
-        self.__connected = True
+        self._logger.info('Connected to cluster')
+        self._cluster.connect(timeout=self._timeout)
+        self._connected = True
         return self
 
     def disconnect(self):
-        self.__logger.info('Disconnected from cluster')
-        self.__cluster.shutdown()
-        self.__connected = False
+        self._logger.info('Disconnected from cluster')
+        self._cluster.shutdown()
+        self._connected = False
 
     ###########################################################
     # SAFE CONTEXT
@@ -85,11 +84,15 @@ class Cluster(object):
 
     @property
     def cluster(self):
-        return self.__cluster
+        return self._cluster
 
     @property
     def connected(self):
-        return self.cluster is not None and self.__connected
+        return self.cluster is not None and self._connected
+
+    @property
+    def njobs(self):
+        return self._njobs
 
     ###########################################################
     # POOLS
@@ -103,8 +106,7 @@ class Cluster(object):
     def create_pool(self, pool_name=None, open_mode='a',
                     auid=None, crush_rule=None, test=False):
         if pool_name is None:
-            pool_prefix = "dosna_random_" if not test else 'test_dosna_'
-            pool_name = pool_prefix + str(time.time())
+            pool_name = Pool.random_name(test=test)
         if self.has_pool(pool_name):
             raise ClusterException('Pool {} already exists'.format(pool_name))
         self.cluster.create_pool(pool_name, auid=auid, crush_rule=crush_rule)
@@ -130,29 +132,34 @@ class Cluster(object):
 
 class Pool(object):
 
-    def __init__(self, name, open_mode='a', cluster=None, auto_open=True):
-        self.name = name
-        self.__is_open = False
-        self.__ioctx = None
-        self.__cluster = None
-        self.__open_mode = self._parse_open_mode(open_mode)
+    __random_pool_prefix__ = 'dosna_random_'
+    __test_pool_prefix__ = 'test_dosna_'
+
+    def __init__(self, name=None, open_mode='a', cluster=None, auto_open=True, njobs=None, test=False):
+        self.name = name or Pool.random_name(test=test)
+        self._is_open = False
+        self._ioctx = None
+        self._cluster = None
+        self._open_mode = self._parse_open_mode(open_mode)
 
         if cluster is None and not Cluster.instance().connected:
             raise ClusterException('Cluster object has not been initialized')
         elif cluster is None:
-            self.__cluster = Cluster.instance()
+            self._cluster = Cluster.instance()
         else:
-            self.__cluster = cluster
+            self._cluster = cluster
 
-        if not self.__cluster.has_pool(self.name):
+        self._njobs = self._cluster.njobs if njobs is None else njobs
+
+        if not self._cluster.has_pool(self.name):
             if not self.can_create:
                 raise ClusterException('Error creating Pool {} with incorrect permissions {}'.format(self.name, open_mode))
-            self.__cluster.cluster.create_pool(self.name)
+            self._cluster.cluster.create_pool(self.name)
         elif self.fail_exist:
             raise ClusterException('Error creating Pool {}, already exists'.format(self.name))
         elif self.truncate:
-            self.__cluster.delete_pool(self.name)
-            self.__cluster.create_pool(self.name)
+            self._cluster.delete_pool(self.name)
+            self._cluster.create_pool(self.name)
 
         if auto_open:
             self.open()
@@ -164,7 +171,7 @@ class Pool(object):
     def delete(self):
         if self.is_open:
             self.close()
-        self.__cluster.delete_pool(self.name)
+        self._cluster.delete_pool(self.name)
 
     def __delitem__(self, key):
         self[key].delete()
@@ -177,21 +184,33 @@ class Pool(object):
             truncate=(open_mode == 'w')
         )
 
+    @staticmethod
+    def random_name(test=False):
+        if test:
+            prefix = Pool.__test_pool_prefix__
+        else:
+            prefix = Pool.__random_pool_prefix__
+        return prefix + str(time.time())
+
     @property
     def read_only(self):
-        return self.__open_mode['read_only']
+        return self._open_mode['read_only']
 
     @property
     def can_create(self):
-        return self.__open_mode['can_create']
+        return self._open_mode['can_create']
 
     @property
     def fail_exist(self):
-        return self.__open_mode['fail_exist']
+        return self._open_mode['fail_exist']
 
     @property
     def truncate(self):
-        return self.__open_mode['truncate']
+        return self._open_mode['truncate']
+
+    @property
+    def njobs(self):
+        return self._njobs
 
     ###########################################################
     # OPEN/CLOSE POOL
@@ -199,16 +218,16 @@ class Pool(object):
 
     @property
     def is_open(self):
-        return self.__is_open
+        return self._is_open
 
     def open(self):
         if self.is_open:
             raise ClusterException('Pool {} is already open'.format(self.name))
-        self.__ioctx = self.__cluster.cluster.open_ioctx(self.name)
-        self.__is_open = True
+        self._ioctx = self._cluster.cluster.open_ioctx(self.name)
+        self._is_open = True
 
     def close(self):
-        self.__ioctx.close()
+        self._ioctx.close()
 
     ###########################################################
     # SAFE CONTEXT
@@ -229,7 +248,7 @@ class Pool(object):
 
     def __getattr__(self, attr):
         if self.is_open:
-            return self.__ioctx.__getattribute__(attr)
+            return self._ioctx.__getattribute__(attr)
         raise ClusterException('Accessing low-level API of a non-open Pool {}'.format(self.name))
 
     ##########################################################
@@ -238,7 +257,7 @@ class Pool(object):
 
     def __getitem__(self, name):
         if self.has_dataset(name):
-            return Dataset(self, name)
+            return Dataset(self, name, njobs=self.njobs)
         raise DatasetException('No dataset {} found in pool {}'.format(name, self.name))
 
     def list_datasets(self):
@@ -289,8 +308,8 @@ class File(Pool):
     Compatibility with h5py: see examples/basic_h5py_compat.py
     """
 
-    def __init__(self, name, open_mode='a'):
-        super(File, self).__init__(name, open_mode=open_mode)
+    def __init__(self, name=None, open_mode='a', test=False):
+        super(File, self).__init__(name=name, open_mode=open_mode, test=test)
 
     def flush(self):
         pass

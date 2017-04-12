@@ -37,7 +37,7 @@ with dn.Cluster(conffile=conffile) as C:
     # Access dataset
     print(ds.shape, ds.dtype, ds.ndim)
     print(ds[:2, :2, :2])  # Supports numpy-like basic slicing (not advanced indexing)
-    print(ds.get_chunk_data(0, 0, 0))  # Equivalent to the above as chunks are 2x2x2
+    print(ds.get_chunk_data((0, 0, 0)))  # Equivalent to the above as chunks are 2x2x2
     # get_chunks supports linear indexing, check ds.total_chunks and ds.get_chunks
     print(ds.get_chunk_data(0))
 
