@@ -1,10 +1,12 @@
 
 
-from .cluster import Cluster, Pool, File, ClusterException, connect, disconnect
+from .cluster import Cluster, ClusterException, connect, disconnect
+
+from .pool import Pool, File, PoolException
 
 from .dataset import Dataset, DatasetException
 
-from .chunks import DataChunk, DataChunkException
+from .chunk import DataChunk, DataChunkException
 
 from .utils import shape2str, str2shape, dtype2str
 

@@ -20,7 +20,9 @@ data2 = np.random.randn(256, 256, 256)
 for njobs in [1, 2, 4]:
 
     with Timer('Total time for tests'):
+
         with dn.Cluster(njobs=njobs) as C:
+
             print('\nTesting with {} thread(s)'.format(njobs))
             print('----------------------------------')
             pool = C.create_pool()
@@ -47,14 +49,13 @@ for njobs in [1, 2, 4]:
             with Timer('Get all data'):
                 cdata3 = ds[:]
 
-            with Timer('Map substraction'):
+            with Timer('Map subtraction'):
                 ds2 = ds.map('data2', lambda x: x - 1.0)
 
             with Timer('Get all data'):
                 cdata4 = ds2[:]
 
-            np.testing.assert_allclose(data, cdata)
-            np.testing.assert_allclose(data2, cdata2)
-            np.testing.assert_allclose(data2 + 1, cdata3)
-            np.testing.assert_allclose(data2, cdata4)
-            print(cdata.dtype, cdata.shape)
+    np.testing.assert_allclose(data, cdata)
+    np.testing.assert_allclose(data2, cdata2)
+    np.testing.assert_allclose(data2 + 1, cdata3)
+    np.testing.assert_allclose(data2, cdata4)

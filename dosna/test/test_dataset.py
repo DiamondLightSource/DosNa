@@ -27,7 +27,7 @@ class DatasetTest(unittest.TestCase):
         self.C.disconnect()
 
     def test_create_dataset(self):
-        self.test_pool.create_dataset('dummy', (10, 10, 10), np.float32)
+        self.test_pool.create_dataset('dummy', shape=(10, 10, 10), dtype=np.float32)
         # Only one dataset has been created
         self.assertEqual(self.test_pool.dataset_count(), 1)
         # No chunk has been loaded yet, only 1 object should exist

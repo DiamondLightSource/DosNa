@@ -7,12 +7,10 @@ import numpy as np
 
 import tempfile
 from joblib import Parallel, delayed, load, dump
-from joblib.pool import has_shareable_memory
-from itertools import izip, repeat
 
 
 from .base import BaseData
-from .chunks import DataChunk
+from .chunk import DataChunk
 from .utils import shape2str, str2shape, dtype2str
 
 
@@ -160,7 +158,7 @@ class Dataset(BaseData):
 
     def __setitem__(self, slices, values):
         if self.read_only:
-            raise DatasetException('Dataset {} is read-only'.format(self.name))
+            raise DatasetException('Dataset `{}` is read-only'.format(self.name))
         slices = self._process_slices(slices)
         chunk_iterator = self._get_chunk_slice_iterator(slices)
 
@@ -218,40 +216,40 @@ class Dataset(BaseData):
     ###########################################################
 
     @classmethod
-    def zeros(cls, pool, name, shape=None, dtype=None, chunks=None):
-        return cls.create(pool, name, shape=shape, dtype=dtype, fillvalue=0,
-                          chunks=chunks)
+    def zeros(cls, pool, name, shape=None, dtype=None, **kwargs):
+        return cls.create(pool, name, shape=shape, dtype=dtype,
+                          data=None, fillvalue=0, **kwargs)
 
     @classmethod
-    def ones(cls, pool, name, shape=None, dtype=None, chunks=None):
-        return cls.create(pool, name, shape=shape, dtype=dtype, fillvalue=1,
-                          chunks=chunks)
+    def ones(cls, pool, name, shape=None, dtype=None, **kwargs):
+        return cls.create(pool, name, shape=shape, dtype=dtype,
+                          data=None, fillvalue=1, **kwargs)
 
     @classmethod
-    def zeros_like(cls, pool, name, data=None, chunks=None):
-        if hasattr(data, 'chunks'):
-            chunks = data.chunks
-        return cls.create(pool, name, shape=data.shape, dtype=data.dtype, fillvalue=0,
-                          chunks=chunks)
+    def zeros_like(cls, ds, name, **kwargs):
+        return cls.create_like(ds, name, fillvalue=0, **kwargs)
 
     @classmethod
-    def ones_like(cls, pool, name, data=None, chunks=None):
-        if hasattr(data, 'chunks'):
-            chunks = data.chunks
-        return cls.create(pool, name, shape=data.shape, dtype=data.dtype, fillvalue=1,
-                          chunks=chunks)
+    def ones_like(cls, ds, name, **kwargs):
+        return cls.create_like(ds, name, fillvalue=1, **kwargs)
 
     @classmethod
-    def create_like(cls, pool, name, data=None, chunks=None, fillvalue=-1):
-        if hasattr(data, 'chunks'):
-            chunks = data.chunks
-        if hasattr(data, 'fillvalue'):
-            fillvalue = data.fillvalue
-        return cls.create(pool, name, shape=data.shape, dtype=data.dtype,
-                          chunks=chunks, fillvalue=fillvalue)
+    def create_like(cls, ds, name, pool=None, njobs=None, fillvalue=-1,
+                    read_only=None, chunks=None):
+
+        pool = pool or ds.pool
+        fillvalue = fillvalue or ds.fillvalue
+        njobs = njobs or ds.njobs
+        chunks = chunks or ds.chunk_size
+        read_only = ds.read_only if read_only is None else read_only
+
+        return cls.create(pool, name, shape=ds.shape, dtype=ds.dtype, data=None,
+                          chunks=chunks, fillvalue=fillvalue, njobs=njobs,
+                          read_only=read_only)
 
     @classmethod
-    def create(cls, pool, name, shape=None, dtype=None, fillvalue=-1, chunks=None, data=None, read_only=False, njobs=None):
+    def create(cls, pool, name, shape=None, dtype=np.float32, fillvalue=-1, chunks=None,
+               data=None, read_only=False, njobs=None):
         try:
             pool.stat(name)
             raise DatasetException('Object `{}` already exists in pool `{}`'.format(name, pool.name))
@@ -261,6 +259,12 @@ class Dataset(BaseData):
         if data is not None:
             shape = data.shape
             dtype = data.dtype
+
+        if shape is None:
+            raise DatasetException('Invalid dataset creation, `shape` or `data` has to be specified.')
+
+        if dtype is None:
+            raise DatasetException('Invalid dataset creation, `dtype` or `data` has to be specified.')
 
         chunk_size = cls._validate_chunk_shape(chunks, shape)
         chunks_needed = (np.ceil(np.asarray(shape, float) / chunk_size)).astype(int)
