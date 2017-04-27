@@ -5,6 +5,7 @@ import logging
 import os.path as op
 
 import pool as dnPool  # full import to avoid cyclic-imports
+from .base import ParallelMixin
 
 
 __default_conffile = op.realpath(op.join(op.dirname(__file__), '..', 'ceph.conf'))
@@ -30,7 +31,7 @@ class ClusterException(Exception):
     pass
 
 
-class Cluster(object):
+class Cluster(ParallelMixin):
 
     default_instance__ = None
 
@@ -40,7 +41,7 @@ class Cluster(object):
         self._connected = False
         self._logger = logger
         self._timeout = timeout
-        self._njobs = njobs
+        self.njobs = njobs
 
     def __del__(self):
         if self.connected:
@@ -92,10 +93,6 @@ class Cluster(object):
     def connected(self):
         return self._cluster is not None and self._connected
 
-    @property
-    def njobs(self):
-        return self._njobs
-
     ###########################################################
     # POOLS
     ###########################################################
@@ -123,6 +120,7 @@ class Cluster(object):
 
     def get_pool(self, pool_name, **kwargs):
         if self.has_pool(pool_name):
+            kwargs.setdefault('njobs', self.njobs)
             return dnPool.Pool(name=pool_name, cluster=self, **kwargs)
         raise ClusterException('Pool {} doesnt exist'.format(pool_name))
 

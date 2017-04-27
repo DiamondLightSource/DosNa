@@ -1,8 +1,22 @@
 
 
 import numpy as np
+import joblib
 
 from .utils import str2shape
+
+
+class ParallelMixin(object):
+
+    _njobs = 1
+
+    @property
+    def njobs(self):
+        return self._njobs
+
+    @njobs.setter
+    def njobs(self, n):
+        self._njobs = n if n > 0 else joblib.cpu_count()
 
 
 class BaseData(object):

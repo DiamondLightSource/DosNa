@@ -4,6 +4,7 @@ import rados
 import time
 
 import cluster as dnCluster  # full import to avoid cyclic-imports
+from .base import ParallelMixin
 from .dataset import Dataset
 
 
@@ -11,7 +12,7 @@ class PoolException(Exception):
     pass
 
 
-class Pool(object):
+class Pool(ParallelMixin):
 
     __random_pool_prefix__ = 'dosna_random_'
     __test_pool_prefix__ = 'test_dosna_'
@@ -28,7 +29,7 @@ class Pool(object):
         if not self._cluster.connected:
             raise PoolException('Cluster object is not connected')
 
-        self._njobs = njobs or self._cluster.njobs
+        self.njobs = njobs or self._cluster.njobs
 
         if not self._cluster.has_pool(self.name):
             if not self.can_create:
@@ -79,10 +80,6 @@ class Pool(object):
     @property
     def truncate(self):
         return self._open_mode == 'w'
-
-    @property
-    def njobs(self):
-        return self._njobs
 
     ###########################################################
     # OPEN/CLOSE POOL
@@ -146,10 +143,13 @@ class Pool(object):
     def object_count(self):
         return len(list(self.list_objects()))
 
-    def create_dataset(self, name, shape=None, dtype=None, **kwargs):
+    def create_dataset(self, name, shape=None, dtype=None, autoload=True, **kwargs):
         if self.read_only:
             raise PoolException('Error creating dataset, Pool `{}` is read-only'.format(self.name))
-        return Dataset.create(self, name, shape=shape, dtype=dtype, **kwargs)
+        ds = Dataset.create(self, name, shape=shape, dtype=dtype, **kwargs)
+        if autoload and 'data' in kwargs and kwargs['data'] is not None:
+            ds.load(kwargs['data'])
+        return ds
 
     def zeros(self, name, shape=None, dtype=None, **kwargs):
         return self.create_dataset(name, shape=shape, dtype=dtype,

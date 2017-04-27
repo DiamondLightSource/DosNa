@@ -8,6 +8,7 @@ ceph.conf
 *.npy
 test_dosna*
 results/
+.spyder*
 
 # C extensions
 *.so

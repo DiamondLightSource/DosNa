@@ -47,5 +47,5 @@ p.delete_dataset('data')
 p.close()
 
 # We can also delete a pool, it will delete all the files
-# Equivalent to C.delete_pool('test_dosna_basic')
+# Equivalent to `C.delete_pool(p.name)` with `C` a cluster object
 p.delete()

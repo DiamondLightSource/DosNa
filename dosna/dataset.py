@@ -9,7 +9,7 @@ import tempfile
 from joblib import Parallel, delayed, load, dump
 
 
-from .base import BaseData
+from .base import BaseData, ParallelMixin
 from .chunk import DataChunk
 from .utils import shape2str, str2shape, dtype2str
 
@@ -18,16 +18,18 @@ class DatasetException(Exception):
     pass
 
 
-class Dataset(BaseData):
+class Dataset(BaseData, ParallelMixin):
 
     __signature__ = 'DosNa.Dataset'
 
     def __init__(self, pool, name, data=None, chunks=None, read_only=False, njobs=None):
-        if (data is None or read_only) and not pool.has_dataset(name):
-            raise DatasetException('No dataset `{}` found in pool `{}`'
-                                   .format(name, pool.name))
-        elif data is not None:
-            Dataset.create(pool, name, data=data, chunks=chunks)
+        if not pool.has_dataset(name):
+            if data is None or read_only:
+                raise DatasetException('No dataset `{}` found in pool `{}`'
+                                       .format(name, pool.name))
+            elif data is not None:
+                ds = Dataset.create(pool, name, data=data, chunks=chunks)
+                ds.load(data)
 
         super(Dataset, self).__init__(pool, name, read_only)
 
@@ -36,7 +38,7 @@ class Dataset(BaseData):
         self._chunk_size = str2shape(self.get_xattr('chunk_size'))
         self._chunk_bytes = np.prod(self._chunk_size) * self.itemsize
         self._total_chunks = np.prod(self._chunks)
-        self._njobs = pool.njobs if njobs is None else njobs
+        self.njobs = njobs or pool.njobs
 
     ###########################################################
     # VALIDATE SLICING
@@ -207,10 +209,6 @@ class Dataset(BaseData):
     def total_chunks(self):
         return self._total_chunks
 
-    @property
-    def njobs(self):
-        return self._njobs
-
     ###########################################################
     # DATASET CREATION / DELETION
     ###########################################################
@@ -279,9 +277,6 @@ class Dataset(BaseData):
 
         ds = cls(pool, name, read_only=read_only, njobs=njobs or pool.njobs)
 
-        if data is not None:
-            ds.load(data)
-
         return ds
 
     ###########################################################
@@ -327,6 +322,10 @@ class Dataset(BaseData):
     ###########################################################
     # PUBLIC CHUNK MANAGEMENT
     ###########################################################
+
+    def get_chunk_slice(self, chunk_idx):
+        chunk_idx = self._transform_chunk_index(chunk_idx)
+        return self._gchunk_bounds_slices(chunk_idx)
 
     def has_chunk(self, chunk_idx):
         chunk_idx = self._transform_chunk_index(chunk_idx)
@@ -436,8 +435,8 @@ class Dataset(BaseData):
                 self._delete_chunk(idx)
         super(Dataset, self).delete()
 
-    def clone(self, name):
-        return Dataset.create(self.pool, name, shape=self.shape, dtype=self.dtype,
+    def clone(self, new_name):
+        return Dataset.create(self.pool, new_name, shape=self.shape, dtype=self.dtype,
                               chunks=self.chunk_size, read_only=self.read_only,
                               njobs=self.njobs, fillvalue=self.fillvalue)
 
@@ -445,8 +444,8 @@ class Dataset(BaseData):
     # OTHER UTILITY FUNCTIONS -- Applied to every chunk
     ###########################################################
 
-    def map(self, name, func, *args, **kwargs):
-        dsout = self.clone(name)
+    def map(self, new_name, func, *args, **kwargs):
+        dsout = self.clone(new_name)
         chunks = self.chunks
 
         if self.njobs is None or self.njobs == 1:

@@ -13,4 +13,3 @@ def str2shape(s, sep='::'):
 
 def dtype2str(dtype):
     return np.dtype(dtype).str
-
