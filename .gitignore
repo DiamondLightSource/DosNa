@@ -9,6 +9,7 @@ ceph.conf
 test_dosna*
 results/
 .spyder*
+.spy*
 
 # C extensions
 *.so
