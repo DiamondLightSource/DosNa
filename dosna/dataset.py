@@ -82,6 +82,8 @@ class Dataset(BaseData, ParallelMixin):
                     start = 0
                 if stop is None:
                     stop = shape[i]
+                elif stop < 0:
+                    stop = self.shape[i] + stop
                 if start < 0 or start >= self.shape[i]:
                     raise DatasetException('Only possitive and in-bounds slicing supported: `{}`'
                                            .format(slices))
@@ -105,7 +107,7 @@ class Dataset(BaseData, ParallelMixin):
         gtargets = []
         for slice_axis, chunk_axis_size, max_chunks in zip(slices, self.chunk_size, self.chunks):
             start_chunk = slice_axis.start // chunk_axis_size
-            end_chunk = min(slice_axis.stop // chunk_axis_size, max_chunks-1)
+            end_chunk = min((slice_axis.stop-1) // chunk_axis_size, max_chunks-1)
             pad_start = slice_axis.start - start_chunk * chunk_axis_size
             pad_stop = slice_axis.stop - max(0, end_chunk) * chunk_axis_size
             ltarget = []
@@ -409,12 +411,12 @@ class Dataset(BaseData, ParallelMixin):
     ###########################################################
 
     def _gchunk_bounds_slices(self, idx):
-        return [slice(i * s, min((i + 1) * s, self.shape[j]))
-                for j, (i, s) in enumerate(zip(idx, self.chunk_size))]
+        return tuple((slice(i * s, min((i + 1) * s, self.shape[j]))
+                      for j, (i, s) in enumerate(zip(idx, self.chunk_size))))
 
     def _lchunk_bounds_slices(self, idx):
-        return [slice(0, min((i + 1) * s, self.shape[j]) - i * s)
-                for j, (i, s) in enumerate(zip(idx, self.chunk_size))]
+        return tuple((slice(0, min((i + 1) * s, self.shape[j]) - i * s)
+                      for j, (i, s) in enumerate(zip(idx, self.chunk_size))))
 
     def load(self, data):
         chunks = self.chunks

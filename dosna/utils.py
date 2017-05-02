@@ -1,5 +1,6 @@
 
 
+import time
 import numpy as np
 
 
@@ -13,3 +14,17 @@ def str2shape(s, sep='::'):
 
 def dtype2str(dtype):
     return np.dtype(dtype).str
+
+
+class Timer(object):
+    def __init__(self, name='Timer'):
+        self.name = name
+        self.tstart = -1
+        self.tend = -1
+
+    def __enter__(self):
+        self.tstart = time.time()
+
+    def __exit__(self, type, value, traceback):
+        self.tend = (time.time() - self.tstart)
+        print('[%s] Elapsed: %.4f seconds' % (self.name, self.tend))

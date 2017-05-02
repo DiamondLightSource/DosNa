@@ -12,11 +12,13 @@ class DataChunkException(Exception):
 
 class DataChunk(BaseData):
 
-    def __init__(self, pool, name, read_only=False):
+    def __init__(self, pool, name, read_only=False, binary_write=False):
         super(DataChunk, self).__init__(pool, name, read_only)
+        self.binary_write = binary_write
         if not pool.has_chunk(name):
             raise DataChunkException('No chunk `{}` found on pool `{}`'
                                      .format(name, pool.name))
+        self.axshift = tuple((np.prod(self.shape[i+1:]) for i in range(self.ndim-1)))
 
     ###########################################################
     # DATA READING/WRITING
@@ -25,7 +27,7 @@ class DataChunk(BaseData):
     def __getitem__(self, slices):
         return self.get_slices(slices)
 
-    def __setitem__(self, slices, value=-1):
+    def __setitem__(self, slices, value):
         self.set_slices(slices, value)
 
     def get_data(self):
@@ -38,16 +40,22 @@ class DataChunk(BaseData):
         if data.shape != self.shape:
             raise DataChunkException('Cannot set chunk of shape `{}` with data of shape `{}`'
                                    .format(self.shape, data.shape))
-        self.write(data.tobytes())
+        self.write_full(data.tobytes())
 
     def get_slices(self, slices):
         return self.get_data()[slices]
 
-    def set_slices(self, slices, value):
-        data = self.get_data()
-        data[slices] = value
-        self.write(data.tobytes())
+    def set_slices(self, slices, new_data):
+        if self.shape == new_data.shape:
+            return self.set_data(new_data)
+        if self.binary_write:
+            return self.set_slices_binary(slices, new_data)
+        cdata = self.get_data()
+        cdata[slices] = new_data
+        self.write_full(cdata.tobytes())
 
+    def set_slices_binary(self, slices, new_data):
+        pass
 
     ###########################################################
     # CREATION
@@ -81,7 +89,7 @@ class DataChunk(BaseData):
     # BINDINGS to lower-level pool object
     ###########################################################
 
-    def write(self, data):
+    def write_full(self, data):
         self.pool.write_full(self.name, data)
 
     def read(self, length=None, offset=0):
