@@ -8,7 +8,7 @@ It works by directly wrapping [`Cluster`](http://docs.ceph.com/docs/master/rados
 
 DosNa is also inspired by the [h5py](http://www.h5py.org/) library and tries to mimic its behaviour, thus `dosna.Pool` and `dosna.Dataset` objects are equivalent objects to `h5py.File` and `h5py.Dataset` respectively (in fact, there is a `dosna.File = dosna.Pool` symlink to fully mimic h5py).
 
-A `dosna.Dataset` is then created as a N-dimensional dataset with chunking. After a `chunk_size` is specified, data loaded to a `dosna.Dataset` will be split in to chunks of size `chunk_size` and will create different Ceph objects as `dosna.DataChunk`, each of them corresponding to a different chunk from the original data. These `dosna.DataChunk` objects are distributed along the Ceph cluster, making `dosna.Dataset` a wrapper to distribute N-dimensional datasets into many N-dimensional smaller chunks.
+A `dosna.Dataset` will automagically distribute a N-dimensional dataset across the cluster by partitioning the whole data in smaller chunks and store them in a completely distributed fashion as `dosna.DataChunks`. After a `chunk_size` is specified, data loaded to a `dosna.Dataset` will be split in to chunks of size `chunk_size` and will create different Ceph objects as `dosna.DataChunk`, each of them corresponding to a different chunk from the original data. These `dosna.DataChunk` objects are distributed along the Ceph cluster, making `dosna.Dataset` a wrapper to distribute N-dimensional datasets into many N-dimensional smaller chunks.
 
 An existing `dosna.Dataset` can be used as an `h5py.Dataset` object or a Numpy Array. This is, a dataset object supports standard slicing `ds[:, :, :]` and `ds[:, :, :] = 5` and the `dosna.Dataset` object will take care behind the scenes to access all the `dosna.DataChunk` needed to reconstruct the desired slices.
 
@@ -68,8 +68,10 @@ with dn.Cluster() as C:
         ds[36:80, 89:, :56] = data[36:80, 89:, :56]
         assert np.allclose(ds[36:80, 89:, :56], data[36:80, 89:, :56])
 ```
-            
-And last, for programs working with a single `dosna.Cluster` object (as will be usual) the cluster instance can be completely abstracted by using `dosna.autoinit`. It will make every pool instance connect to the singleton cluster instance.
+
+## Using default Cluster
+
+For programs working with a single `dosna.Cluster` object (as will be usual) the cluster instance can be completely abstracted by using `dosna.autoinit`. It will make every `dosna.Pool` instance connect to the singleton cluster instance.
 
 ```python
 dn.auto_init()
@@ -81,7 +83,7 @@ with Pool('tutorial') as p:
 
 ## h5py compatibility
 
-DosNa also points `dosna.Pool` to `dosna.File` for compatibilities with h5py, allowing the following piece of code to be run with either of libraries:
+DosNa also shadows `dosna.Pool` as `dosna.File` for compatibilities with h5py, allowing the following piece of code to be run with either of libraries:
 
 ```python
 import numpy as np
@@ -90,13 +92,15 @@ if True: # Change to False to run the same code with DosNa instead of h5py
     import h5py as h5
 else:
     import dosna as h5
-    st.auto_init(njobs=1) # Change to number of jobs
+    h5.auto_init(njobs=1) # Change to number of jobs
 
-with h5.File('/tmp/data.h5', 'w') as f:
+with h5.File('/tmp/data.h5', 'w') as f: # since dosna.File subclasses dosna.Pull this will work in dosna
     f.create_dataset('data', data=np.random.rand(100, 100, 10), chunks=(32, 32, 32), fillvalue=-1)
-    data = f['data']
 
+f = h5.File('/tmp/data.h5', 'r')
+data = f['data']
 print(data[0, 0, :10])
+f.close()
 ```
 
 Note that the above script will run without errors using either h5py or dosna backend. See `examples/basic_h5py_compat.py` for more details.
