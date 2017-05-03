@@ -1,13 +1,6 @@
 
 
-import h5py as h5
 import numpy as np
-import os.path as op
-
-import matplotlib
-matplotlib.use('Agg')
-
-import matplotlib.pyplot as plt
 
 from scipy.signal import fftconvolve
 from skimage import transform, data, io
