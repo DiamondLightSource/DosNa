@@ -21,11 +21,15 @@ Requirements:
 
 Clone repository:
 
-    git clone https://github.com/DiamondLightSource/DosNa.git
+```bash
+git clone https://github.com/DiamondLightSource/DosNa.git
+```
 
 Install it:
 
-    cd DosNa && python setup.py install
+```bash
+cd DosNa && python setup.py install
+```
 
 Configure cluster:
 
@@ -95,7 +99,7 @@ else:
     h5.auto_init(njobs=1) # Change to number of jobs
 
 with h5.File('/tmp/data.h5', 'w') as f: # since dosna.File subclasses dosna.Pull this will work in dosna
-    f.create_dataset('data', data=np.random.rand(100, 100, 10), chunks=(32, 32, 32), fillvalue=-1)
+    f.create_dataset('data', data=np.random.rand(100, 100, 100), chunks=(32, 32, 32), fillvalue=-1)
 
 f = h5.File('/tmp/data.h5', 'r')
 data = f['data']
