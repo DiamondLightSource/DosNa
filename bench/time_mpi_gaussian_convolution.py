@@ -158,8 +158,11 @@ def convolve2(ds, sigma, chunk_size):
               .format(t1 - t0), rank=0)
 
     ds1_.delete()
+    dn.wait()
     ds2_.delete()
+    dn.wait()
     ds3_.delete()
+    dn.wait()
 
     return t1 - t0
 
@@ -183,8 +186,8 @@ for data_size in DATA_SIZE:
         
         g, out = get_output_dataset(data_size, chunk_size)
         if dn.rank == 0:
-            g.attrs['data_size'] = data_size
-            g.attrs['chunk_size'] = chunk_size
+            out.attrs['data_size'] = data_size
+            out.attrs['chunk_size'] = chunk_size
         
         t0 = t1 - t0
         
