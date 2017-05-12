@@ -10,7 +10,9 @@ from scipy.ndimage import gaussian_filter1d, gaussian_filter
 import dosna.mpi as dn
 dn.auto_init()
 
-CSIZE = 64
+VALIDATE = False
+DSIZE = 512
+CSIZE = 60
 SIGMA = 3
 TRUNC = 4
 RADIUS = int(SIGMA * TRUNC + 0.5)
@@ -18,10 +20,40 @@ RADIUS = int(SIGMA * TRUNC + 0.5)
 ###############################################################################
 # Data
 
-path = op.realpath(op.join(op.dirname(__file__), '..', 'test.h5'))
-h5f = h5.File(path, 'r')
+in_path = op.realpath(op.join(op.dirname(__file__), '..', 'test_input.h5'))
+
+if dn.rank == 0:
+    create = True
+    if op.isfile(in_path):
+        with h5.File(in_path, 'r') as f:
+            create = f['data'].shape != (DSIZE, DSIZE, DSIZE)
+        
+    if create:
+        dn.pprint('Writing random data', rank=0)
+        with h5.File(in_path, 'w') as f:
+            data = np.random.rand(DSIZE, DSIZE, DSIZE).astype(np.float32)
+            f.create_dataset('data', data=data)
+
+dn.wait()
+
+h5f = h5.File(in_path, 'r')
 data = h5f['data']
 dn.pprint(data.shape)
+
+out_path = op.realpath(op.join(op.dirname(__file__), '..', 'test_result.h5'))
+h5out = h5.File(out_path, 'a')
+mpath = 'mpi_%d' % dn.ncores
+dpath = 'data_%d' % DSIZE
+cpath = 'chunk_%d' % CSIZE
+if mpath not in h5out:
+    h5out.create_group(mpath)
+if dpath not in h5out[mpath]:
+    h5out[mpath].create_group(dpath)
+if cpath not in h5out[mpath][dpath]:
+    time_out = h5out[mpath][dpath].create_dataset(cpath, dtype=np.float32,
+                                                  shape=(7,), fillvalue=0)
+else:
+    time_out = h5out[mpath][dpath][cpath]
 
 ###############################################################################
 # Load Data
@@ -58,6 +90,7 @@ for z in range(dn.rank, ds.chunks[0], dn.ncores):
 
 dn.wait()
 t1 = time.time()
+time_out[0] = t1 - t0
 dn.pprint('Separable 3D convolution performed in {0:.4f}'.format(t1 - t0), rank=0)
 
 ###############################################################################
@@ -108,6 +141,7 @@ for x in range(dn.rank, ds.chunks[2], dn.ncores):
 
 dn.wait()
 t1 = time.time()
+time_out[1] = t1 - t0
 dn.pprint('Three separable 1D convolutions performed in {0:.4f}'
           .format(t1 - t0), rank=0)
 
@@ -136,6 +170,7 @@ for axis in range(ds.ndim):
     dn.wait()
 
 t1 = time.time()
+time_out[2] = t1 - t0
 dn.pprint('Three inplace separable 1D convolutions performed in {0:.4f}'
           .format(t1 - t0), rank=0)
 
@@ -168,6 +203,7 @@ for axis in range(ds.ndim):
     prev = ds_pad_n
 
 t1 = time.time()
+time_out[3] = t1 - t0
 dn.pprint('Three separable 1D convolutions with padding performed in {0:.4f}'
           .format(t1 - t0), rank=0)
 
@@ -201,6 +237,7 @@ for axis in range(ds.ndim):
     dn.wait()
 
 t1 = time.time()
+time_out[4] = t1 - t0
 dn.pprint('Three inplace separable 1D convolutions with padding performed in {0:.4f}'
           .format(t1 - t0), rank=0)
 
@@ -219,6 +256,7 @@ if dn.rank == 0:
 
 dn.wait()
 t1 = time.time()
+time_out[5] = t1 - t0
 dn.pprint('Full convolution in a single thread performed in {0:.4f}'
           .format(t1 - t0), rank=0)
 
@@ -247,6 +285,7 @@ for z in range(dn.rank, ds.chunks[0], dn.ncores):
 
 dn.wait()
 t1 = time.time()
+time_out[6] = t1 - t0
 dn.pprint('Full convolution multi-thread performed in {0:.4f}'
           .format(t1 - t0), rank=0)
 
@@ -254,34 +293,38 @@ dn.pprint('Full convolution multi-thread performed in {0:.4f}'
 ###############################################################################
 # Verify results
 
-if dn.rank == 0:
-    import matplotlib; matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    plt.figure(figsize=(5*3, 4*3))
-    plt.subplot(2,5,1); plt.imshow(ds1_[50], 'gray');
-    plt.subplot(2,5,2); plt.imshow(ds2_[50], 'gray');
-    plt.subplot(2,5,3); plt.imshow(ds3_[50], 'gray');
-    plt.subplot(2,5,4); plt.imshow(ds_sep[50], 'gray');
-    plt.subplot(2,5,5); plt.imshow(ds3d_[50], 'gray');
-    plt.subplot(2,5,6); plt.imshow(ds_pad[50], 'gray');
-    plt.subplot(2,5,7); plt.imshow(ds_pad_n[50], 'gray');
-    plt.subplot(2,5,8); plt.imshow(ds_conv[50], 'gray');
-    plt.subplot(2,5,9); plt.imshow(ds_conv_n[50], 'gray');
-    plt.savefig('result.png', bbox_inches='tight')
-
-
-assert np.allclose(ds3d_[...], ds3_[...])
-assert np.allclose(ds3d_[...], ds_sep[...])
-assert np.allclose(ds3_[...], ds_sep[...])
-assert np.allclose(ds_pad_n[...], ds_conv[...])
-assert np.allclose(ds_conv[...], ds_conv_n[...])
-# They should not match due to overlapping patch rewriting while reading (inplace + padding)
-assert not np.allclose(ds_pad[...], ds_conv[...])
-print("Results do match!")
+if VALIDATE:
+    if dn.rank == 0:
+        import matplotlib; matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(5*3, 4*3))
+        plt.subplot(2,5,1); plt.imshow(ds1_[50], 'gray');
+        plt.subplot(2,5,2); plt.imshow(ds2_[50], 'gray');
+        plt.subplot(2,5,3); plt.imshow(ds3_[50], 'gray');
+        plt.subplot(2,5,4); plt.imshow(ds_sep[50], 'gray');
+        plt.subplot(2,5,5); plt.imshow(ds3d_[50], 'gray');
+        plt.subplot(2,5,6); plt.imshow(ds_pad[50], 'gray');
+        plt.subplot(2,5,7); plt.imshow(ds_pad_n[50], 'gray');
+        plt.subplot(2,5,8); plt.imshow(ds_conv[50], 'gray');
+        plt.subplot(2,5,9); plt.imshow(ds_conv_n[50], 'gray');
+        plt.savefig('result.png', bbox_inches='tight')
+    
+    
+    assert np.allclose(ds3d_[...], ds3_[...])
+    assert np.allclose(ds3d_[...], ds_sep[...])
+    assert np.allclose(ds3_[...], ds_sep[...])
+    assert np.allclose(ds_pad_n[...], ds_conv[...])
+    assert np.allclose(ds_conv[...], ds_conv_n[...])
+    # They should not match due to overlapping patch rewriting while reading (inplace + padding)
+    #assert not np.allclose(ds_pad[...], ds_conv[...])
+    print("Results do match!")
 
 ###############################################################################
 # Finish
 
 h5f.close()
+h5out.close()
+
 pool.close()
 pool.delete()
+

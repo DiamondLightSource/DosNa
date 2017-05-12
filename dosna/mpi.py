@@ -156,7 +156,7 @@ class Dataset(_dn.Dataset):
     def map_padded(self, out_name, func, padding, *args, **kwargs):
         pad_mode = kwargs.pop('mode', 'reflect')
         if type(padding) == int:
-            padding = [padding] * self.ndimg
+            padding = [padding] * self.ndim
         elif len(padding) != self.ndim:
             raise Exception('Padding does not match')
 
