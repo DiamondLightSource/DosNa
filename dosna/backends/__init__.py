@@ -2,28 +2,29 @@
 
 import logging as log
 from importlib import import_module
-from collections import namedtuple
 
 
 __current = None
-__available = ['hdf5']
+available = ['mem', 'hdf5']
 
 
-Backend = namedtuple('Backend', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk'])
-
-
-def use(backend):
+def use_backend(backend):
     global __current
-    if __current is not None:
-        log.warn('Cannot setup backend, already set to `%s`',  __current.name)
-        return
-    if backend in __available:
+    if backend in available:
         m = import_module('dosna.backends.%s' % backend)
-        __current = Backend(backend, m.Cluster, m.Pool, m.Dataset, m.DataChunk)
+        if hasattr(m, 'backend'):
+            log.debug('Switching backend to `%s`' % m.backend.name)
+            __current = m.backend
+        else:
+            raise Exception('Module `%s` is not a proper backend.' % backend)
     else:
-        raise Exception('Backend `%s` not available!')
-        
-def backend():
+        raise Exception('Backend `{}` not available! Choose from: {}'
+                        .format(backend, available))
+
+
+def get_backend(name=None):
+    if name is not None:
+        use_backend(name)
     if __current is None:
-        use(__available[0])
+        use_backend(available[0])
     return __current

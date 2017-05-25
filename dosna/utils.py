@@ -21,10 +21,12 @@ class Timer(object):
         self.name = name
         self.tstart = -1
         self.tend = -1
+        self.time = 0
 
     def __enter__(self):
         self.tstart = time.time()
 
     def __exit__(self, type, value, traceback):
-        self.tend = (time.time() - self.tstart)
-        print('[%s] Elapsed: %.4f seconds' % (self.name, self.tend))
+        self.tend = time.time()
+        self.time = self.tend - self.tstart
+        print('[*] %s -- Elapsed: %.4f seconds' % (self.name, self.time))
