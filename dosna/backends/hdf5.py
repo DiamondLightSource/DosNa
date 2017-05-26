@@ -18,8 +18,8 @@ class H5Cluster(BaseCluster):
     A HDF5 Cluster represents the local filesystem.
     """
     
-    def __init__(self, path):
-        super(H5Cluster, self).__init__()
+    def __init__(self, path, *args, **kwargs):
+        super(H5Cluster, self).__init__(*args, **kwargs)
         self.path = ''
         self.path = self._validate_path(path)
         
@@ -120,14 +120,14 @@ class H5Pool(BasePool):
         if not self.has_dataset(path):
             raise Exception('Dataset `%s` does not exist' % path)
             
-        with h5.File(os.path.join(real_path, 'dataset.h5'), 'w') as f:
-            shape = f.attrs['shape']
+        with h5.File(os.path.join(real_path, 'dataset.h5'), 'r') as f:
+            shape = tuple(f.attrs['shape'])
             dtype = f.attrs['dtype']
             fillvalue = f.attrs['fillvalue']
             chunks_needed = f.attrs['chunks']
             chunk_size = f.attrs['chunk_size']
         
-        return H5Dataset(self, path, shape, dtype, fillvalue, chunks_needed, chunk_size)
+        return H5Dataset(self, real_path, shape, dtype, fillvalue, chunks_needed, chunk_size)
     
     def has_dataset(self, path):
         real_path = self._process_path(path)
@@ -143,6 +143,10 @@ class H5Pool(BasePool):
         
 class H5Dataset(BaseDataset):
     
+    def __init__(self, *args, subchunks=None, **kwargs):
+        super(H5Dataset, self).__init__(*args, **kwargs)
+        self._subchunks = subchunks
+    
     def _idx2name(self, idx):
         if not all([type(i) == int for i in idx]) or len(idx) != self.ndim:
             raise Exception('Invalid chunk idx')
@@ -155,7 +159,7 @@ class H5Dataset(BaseDataset):
         chunk_name = self._idx2name(idx)
         with h5.File(chunk_name, 'w') as f:
             f.create_dataset('data', shape=self.chunk_size, dtype=self.dtype,
-                             fillvalue=self.fillvalue)
+                             fillvalue=self.fillvalue, chunks=self._subchunks)
             if data is not None:
                 slices = slices or slice(None)
                 f['data'][slices] = data
@@ -200,4 +204,4 @@ class H5DataChunk(BaseDataChunk):
             f['data'][slices] = values
 
 
-backend = Backend('hdf5', H5Cluster, H5Pool, H5Dataset, H5DataChunk)
+__backend__ = Backend('hdf5', H5Cluster, H5Pool, H5Dataset, H5DataChunk)

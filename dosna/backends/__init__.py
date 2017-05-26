@@ -5,16 +5,17 @@ from importlib import import_module
 
 
 __current = None
-available = ['mem', 'hdf5']
+available = ['memory', 'hdf5']
 
 
 def use_backend(backend):
+    backend = backend.lower()
     global __current
     if backend in available:
         m = import_module('dosna.backends.%s' % backend)
-        if hasattr(m, 'backend'):
-            log.debug('Switching backend to `%s`' % m.backend.name)
-            __current = m.backend
+        if hasattr(m, '__backend__'):
+            log.debug('Switching backend to `%s`' % m.__backend__.name)
+            __current = m.__backend__
         else:
             raise Exception('Module `%s` is not a proper backend.' % backend)
     else:

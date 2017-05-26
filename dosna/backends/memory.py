@@ -12,8 +12,8 @@ class MemCluster(BaseCluster):
     A Memory Cluster represents a dictionary.
     """
     
-    def __init__(self, path):
-        super(MemCluster, self).__init__()
+    def __init__(self, name, *args, **kwargs):
+        super(MemCluster, self).__init__(*args, **kwargs)
         self.pools = {}
         
     def connect(self):
@@ -111,6 +111,11 @@ class MemDataset(BaseDataset):
         super(MemDataset, self).__init__(pool, name, shape, dtype, fillvalue, 
                                          chunks, chunk_size)
         self.data_chunks = {}
+        self._populate_chunks()
+        
+    def _populate_chunks(self):
+        for idx in np.ndindex(*self.chunks):
+            self.create_chunk(idx)
     
     def create_chunk(self, idx, data=None, slices=None):
         if self.has_chunk(idx):
@@ -154,4 +159,4 @@ class MemDataChunk(BaseDataChunk):
         self.data[slices] = values
 
 
-backend = Backend('memory', MemCluster, MemPool, MemDataset, MemDataChunk)
+__backend__ = Backend('memory', MemCluster, MemPool, MemDataset, MemDataChunk)

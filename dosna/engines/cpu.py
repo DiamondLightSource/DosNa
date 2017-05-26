@@ -54,9 +54,15 @@ class CpuDataset(Wrapper):
         return CpuDataChunk(chunk)
             
     def __getitem__(self, slices):
+        return self.get_data(slices)
+    
+    def __setitem__(self, slices, values):
+        self.set_data(values, slices=slices)
+        
+    def get_data(self, slices=None):
         slices, squeeze_axis = self._process_slices(slices, squeeze=True)
         tshape = tuple(x.stop - x.start for x in slices)
-        chunk_iterator = self._chunk_slice_iterator(slices)
+        chunk_iterator = self._chunk_slice_iterator(slices, self.ndim)
 
         output = np.empty(tshape, dtype=self.dtype)
         for idx, cslice, gslice in chunk_iterator:
@@ -65,18 +71,25 @@ class CpuDataset(Wrapper):
         if len(squeeze_axis) > 0:
             return np.squeeze(output, axis=squeeze_axis)
         return output
-    
-    def __setitem__(self, slices, values):
+        
+    def set_data(self, values, slices=None):
+        if slices is None:
+            return self.load(values)
+        
+        isscalar = np.isscalar(values)
+        ndim = self.ndim if isscalar else values.ndim
         slices, squeeze_axis = self._process_slices(slices, squeeze=True)
-        chunk_iterator = self._chunk_slice_iterator(slices)
+        chunk_iterator = self._chunk_slice_iterator(slices, ndim)
 
         for idx, cslice, gslice in chunk_iterator:
-            if np.isscalar(values):
+            if isscalar:
                 self.set_chunk_data(idx, values, slices=cslice)
             else:
                 self.set_chunk_data(idx, values[gslice], slices=cslice)
     
     def load(self, data):
+        if data.shape != self.shape:
+            raise Exception('Data shape does not match')
         for idx in np.ndindex(*self.chunks):
             gslices = self._global_chunk_bounds(idx)
             lslices = self._local_chunk_bounds(idx)
@@ -89,4 +102,4 @@ class CpuDataChunk(Wrapper):
 
 
 # Export Engine
-backend = Engine('cpu', CpuCluster, CpuPool, CpuDataset, CpuDataChunk)
+__engine__ = Engine('cpu', CpuCluster, CpuPool, CpuDataset, CpuDataChunk, {})

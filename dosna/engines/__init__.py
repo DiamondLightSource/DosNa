@@ -5,16 +5,18 @@ from importlib import import_module
 
 
 __current = None
-available = ['cpu']
+available = ['cpu', 'joblib', 'mpi']
 
 
-def use_engine(engine):
+def use_engine(engine, **kwargs):
+    engine = engine.lower()
     global __current
     if engine in available:
         m = import_module('dosna.engines.%s' % engine)
-        if hasattr(m, 'backend'):
-            log.debug('Switching engine to `%s`' % m.backend.name)
-            __current = m.backend
+        if hasattr(m, '__engine__'):
+            log.debug('Switching engine to `%s`' % m.__engine__.name)
+            __current = m.__engine__
+            __current.params.update(kwargs)
         else:
             raise Exception('Module `%s` is not a proper engine.' % engine)
     else:

@@ -5,7 +5,9 @@ from collections import namedtuple
 
 
 # Currently there is no need for more fancy attributes
-Backend = Engine = namedtuple('Backend', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk'])
+Backend = namedtuple('Backend', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk'])
+
+Engine = namedtuple('Engine', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk', 'params'])
 
 
 class Wrapper(object):
@@ -28,7 +30,7 @@ class Wrapper(object):
 
 class BaseCluster(object):
     
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._connected = False
     
     @property
@@ -200,10 +202,10 @@ class BaseDataset(object):
     # To be implemented by Processing Backends
     
     def __getitem__(self, slices):
-        raise NotImplementedError('`slicing` not implemented for this backend')
+        return self.get_data(slices=slices)
             
-    def __setitem__(self, slices):
-        raise NotImplementedError('`slicing` not implemented for this backend')
+    def __setitem__(self, slices, values):
+        return self.set_data(values, slices=slices)
     
     def map(self, func, padding, name):
         raise NotImplementedError('`map` not implemented for this backend')
@@ -217,7 +219,16 @@ class BaseDataset(object):
     def clone(self, name):
         raise NotImplementedError('`clone` not implemented for this backend')
     
+    def get_data(self, slices=None):
+        raise NotImplementedError('`get_data` not implemented for this backend')      
+    
+    def set_data(self, data, slices=None):
+        raise NotImplementedError('`set_data` not implemented for this backend')      
+    
     # Utility methods used by all backends and engines
+    
+    def _idx_from_flat(self, idx):
+        return tuple(map(int, np.unravel_index(idx, self.chunks)))
     
     def _local_chunk_bounds(self, idx):
          return tuple((slice(0, min((i + 1) * s, self.shape[j]) - i * s)
@@ -281,7 +292,7 @@ class BaseDataset(object):
             return final_slices, squeeze_axis
         return final_slices
     
-    def _chunk_slice_iterator(self, slices):
+    def _chunk_slice_iterator(self, slices, ndim):
         indexes = []
         ltargets = []
         gtargets = []
@@ -310,7 +321,8 @@ class BaseDataset(object):
                 for n, j in enumerate(idx):
                     _index.append(indexes[n][j])
                     _lslice.append(ltargets[n][j])
-                    _gslice.append(gtargets[n][j])
+                    if self.ndim - ndim <= n:
+                        _gslice.append(gtargets[n][j])
                 yield tuple(_index), tuple(_lslice), tuple(_gslice)
 
         return __chunk_iterator()
