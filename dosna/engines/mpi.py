@@ -16,16 +16,11 @@ class MpiMixin(object):
     
     def __init__(self, mpi_comm):
         self.mpi_comm = mpi_comm
+        self.mpi_size = self.mpi_comm.Get_size()
+        self.mpi_rank = self.mpi_comm.Get_rank()
+        self.mpi_is_root = self.mpi_rank == 0
     
-    @property
-    def mpi_size(self):
-        return self.mpi_comm.Get_size()
-    
-    @property
-    def mpi_rank(self):
-        return self.mpi_comm.Get_rank()
-    
-    def mpi_barrier(self):
+    def mpi_wait(self):
         self.mpi_comm.Barrier()
 
 
@@ -43,9 +38,9 @@ class MpiCluster(Wrapper, MpiMixin):
             log.warning('MPI engine will work unexpectedly with Memory backend')
     
     def create_pool(self, *args, **kwargs):
-        if self.mpi_rank == 0:
+        if self.mpi_is_root:
             self.instance.create_pool(*args, **kwargs)
-        self.mpi_barrier()
+        self.mpi_wait()
         return self.get_pool(*args, **kwargs)
     
     def get_pool(self, *args, **kwargs):
@@ -53,10 +48,10 @@ class MpiCluster(Wrapper, MpiMixin):
         return MpiPool(pool, self.mpi_comm)
     
     def del_pool(self, *args, **kwargs):
-        self.mpi_barrier()
-        if self.mpi_rank == 0:
+        self.mpi_wait()
+        if self.mpi_is_root:
             self.instance.del_pool(*args, **kwargs)
-        self.mpi_barrier()
+        self.mpi_wait()
     
     def __getitem__(self, pool_name):
         return self.get_pool(pool_name)
@@ -69,9 +64,9 @@ class MpiPool(Wrapper, MpiMixin):
         MpiMixin.__init__(self, mpi_comm)
 
     def create_dataset(self, name, *args, **kwargs):
-        if self.mpi_rank == 0:
+        if self.mpi_is_root:
             ds = self.instance.create_dataset(name, *args, **kwargs)
-        self.mpi_barrier()
+        self.mpi_wait()
         ds = self.get_dataset(name)
         if 'data' in kwargs:
             ds.load(kwargs['data'])
@@ -82,10 +77,10 @@ class MpiPool(Wrapper, MpiMixin):
         return MpiDataset(ds, self.mpi_comm)
     
     def del_dataset(self, *args, **kwargs):
-        self.mpi_barrier()
-        if self.mpi_rank == 0:
+        self.mpi_wait()
+        if self.mpi_is_root:
             self.instance.del_dataset(*args, **kwargs)
-        self.mpi_barrier()
+        self.mpi_wait()
     
     def __getitem__(self, ds_name):
         return self.get_dataset(ds_name)
@@ -98,9 +93,9 @@ class MpiDataset(CpuDataset, MpiMixin):
         MpiMixin.__init__(self, mpi_comm)
     
     def create_chunk(self, idx, *args, **kwargs):
-        if self.mpi_rank == 0:
+        if self.mpi_is_root:
             self.instance.create_chunk(idx, *args, **kwargs)
-        self.mpi_barrier()
+        self.mpi_wait()
         return self.get_chunk(idx)
     
     def get_chunk(self, *args, **kwargs):
@@ -116,7 +111,7 @@ class MpiDataset(CpuDataset, MpiMixin):
             gslices = self._global_chunk_bounds(idx)
             lslices = self._local_chunk_bounds(idx)
             self.set_chunk_data(idx, data[gslices], slices=lslices)
-        self.mpi_barrier()
+        self.mpi_wait()
 
 
 class MpiDataChunk(Wrapper):

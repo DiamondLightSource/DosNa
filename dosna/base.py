@@ -1,6 +1,7 @@
 
 
 import numpy as np
+from itertools import product
 from collections import namedtuple
 
 
@@ -144,6 +145,7 @@ class BaseDataset(object):
         self._chunks = chunks
         self._chunk_size = chunk_size
         self._total_chunks = np.prod(chunks)
+        self._ndim = len(self._shape)
     
     @property
     def name(self):
@@ -155,7 +157,7 @@ class BaseDataset(object):
     
     @property
     def ndim(self):
-        return len(self._shape)
+        return self._ndim
     
     @property
     def dtype(self):
@@ -292,40 +294,57 @@ class BaseDataset(object):
             return final_slices, squeeze_axis
         return final_slices
     
+    def _ndindex(self, dims):
+        return product(*(range(d) for d in dims))
+    
     def _chunk_slice_iterator(self, slices, ndim):
         indexes = []
-        ltargets = []
-        gtargets = []
-        for slice_axis, chunk_axis_size, max_chunks in zip(slices, self.chunk_size, self.chunks):
-            start_chunk = slice_axis.start // chunk_axis_size
-            end_chunk = min((slice_axis.stop-1) // chunk_axis_size, max_chunks-1)
-            pad_start = slice_axis.start - start_chunk * chunk_axis_size
-            pad_stop = slice_axis.stop - max(0, end_chunk) * chunk_axis_size
-            ltarget = []
-            gtarget = []
-            index = []
-            for i in range(start_chunk, end_chunk+1):
-                start = pad_start if i == start_chunk else 0
-                stop = pad_stop if i == end_chunk else chunk_axis_size
-                ltarget.append(slice(start, stop))
-                gchunk = i * chunk_axis_size - slice_axis.start
-                gtarget.append(slice(gchunk + start, gchunk + stop))
-                index.append(i)
-            ltargets.append(ltarget)
-            gtargets.append(gtarget)
-            indexes.append(index)
-
-        def __chunk_iterator():
-            for idx in np.ndindex(*[len(chunks_axis) for chunks_axis in indexes]):
-                _index = []; _lslice = []; _gslice = []
-                for n, j in enumerate(idx):
-                    _index.append(indexes[n][j])
-                    _lslice.append(ltargets[n][j])
-                    if self.ndim - ndim <= n:
-                        _gslice.append(gtargets[n][j])
-                yield tuple(_index), tuple(_lslice), tuple(_gslice)
-
-        return __chunk_iterator()
+        nchunks = []
+        cslices = []
+        gslices = []
+        
+        chunk_size = self.chunk_size
+        chunks = self.chunks
+        
+        for n, slc in enumerate(slices):
+            sstart = slc.start // chunk_size[n]
+            sstop = min((slc.stop - 1) // chunk_size[n], chunks[n] - 1)
+            if sstop < 0:
+                sstop = 0
+            
+            pad_start = slc.start - sstart * chunk_size[n]
+            pad_stop = slc.stop - sstop * chunk_size[n]
+            
+            _i = [] # index
+            _c = [] # chunk slices in current dimension
+            _g = [] # global slices in current dimension
+            
+            for i in range(sstart, sstop+1):
+                start = pad_start if i == sstart else 0
+                stop = pad_stop if i == sstop else chunk_size[n]
+                gchunk = i * chunk_size[n] - slc.start
+                _i += [i]
+                _c += [slice(start, stop)]
+                _g += [slice(gchunk + start, gchunk + stop)]
+                
+            nchunks += [sstop - sstart + 1]
+            indexes += [_i]
+            cslices += [_c]
+            gslices += [_g]
+        
+        return (
+            zip(*
+                (
+                    (
+                        indexes[n][i],
+                        cslices[n][i],
+                        (n < ndim or None) and gslices[n][i],
+                    )
+                    for n, i in enumerate(idx)
+                )
+            )
+            for idx in self._ndindex(nchunks)            
+        )
 
 
 class BaseDataChunk(object):

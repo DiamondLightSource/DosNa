@@ -21,10 +21,10 @@ class CpuCluster(Wrapper):
     def get_pool(self, *args, **kwargs):
         pool = self.instance.get_pool(*args, **kwargs)
         return CpuPool(pool)
-    
+
     def __getitem__(self, pool_name):
         return self.get_pool(pool_name)
-  
+
 
 class CpuPool(Wrapper):
 

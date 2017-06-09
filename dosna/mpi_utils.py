@@ -1,5 +1,9 @@
 
 
+from __future__ import with_statement 
+import sys 
+import inspect
+
 import time
 from math import ceil, log10
 from mpi4py import MPI
@@ -14,39 +18,33 @@ def mpi_comm():
     return comm
 
 
-def mpi_rank():
-    return mpi_comm().Get_rank()
+def mpi_rank(comm=None):
+    comm = comm or mpi_comm()
+    return comm.Get_rank()
 
 
-def mpi_size():
-    return mpi_comm().Get_size()
+def mpi_size(comm=None):
+    comm = comm or mpi_comm()
+    return comm.Get_size()
 
 
-def mpi_barrier():
-    return mpi_comm().Barrier()
+def mpi_barrier(comm=None):
+    comm = comm or mpi_comm()
+    return comm.Barrier()
 
 
 def pprint(*args, **kwargs):
     rank = kwargs.pop('rank', None)
+    comm = kwargs.pop('comm', None)
     pprint_prefix = '|{{0:{}d}})'.format(int(ceil(log10(mpi_size()))))
-    if rank is None or rank == mpi_rank():
+    if rank is None or rank == mpi_rank(comm=comm):
         print(pprint_prefix.format(mpi_rank()), *args, **kwargs) 
 
 
-def mpi_root():
-    return mpi_rank() == 0
-
-
-class MpiRoot(object):
-    
-    def __enter__(self):
-        if not mpi_root():
-            raise Exception() # Forze early exit of rank != 0 proccesses
-    
-    def __exit__(self, *args):
-        mpi_barrier()
-        
-        
+def mpi_root(comm=None):
+    return mpi_rank(comm=comm) == 0
+  
+      
 class MpiTimer(object):
     def __init__(self, name='Timer'):
         self.name = name
