@@ -8,16 +8,16 @@ from ..backends import get_backend
 
 
 class CpuCluster(Wrapper):
-    
+
     def __init__(self, *args, **kwargs):
         bname = kwargs.pop('backend', None)
         instance = get_backend(bname).Cluster(*args, **kwargs)
         super(CpuCluster, self).__init__(instance)
-    
+
     def create_pool(self, *args, **kwargs):
         pool = self.instance.create_pool(*args, **kwargs)
         return CpuPool(pool)
-    
+
     def get_pool(self, *args, **kwargs):
         pool = self.instance.get_pool(*args, **kwargs)
         return CpuPool(pool)
@@ -34,31 +34,31 @@ class CpuPool(Wrapper):
         if 'data' in kwargs:
             ds.load(kwargs['data'])
         return ds
-    
+
     def get_dataset(self, *args, **kwargs):
         ds = self.instance.get_dataset(*args, **kwargs)
         return CpuDataset(ds)
-    
+
     def __getitem__(self, ds_name):
         return self.get_dataset(ds_name)
-    
+
 
 class CpuDataset(Wrapper):
-    
+
     def create_chunk(self, *args, **kwargs):
         chunk = self.instance.create_chunk(*args, **kwargs)
         return CpuDataChunk(chunk)
-    
+
     def get_chunk(self, *args, **kwargs):
         chunk = self.instance.get_chunk(*args, **kwargs)
         return CpuDataChunk(chunk)
-            
+
     def __getitem__(self, slices):
         return self.get_data(slices)
-    
+
     def __setitem__(self, slices, values):
         self.set_data(values, slices=slices)
-        
+
     def get_data(self, slices=None):
         slices, squeeze_axis = self._process_slices(slices, squeeze=True)
         tshape = tuple(x.stop - x.start for x in slices)
@@ -67,15 +67,15 @@ class CpuDataset(Wrapper):
         output = np.empty(tshape, dtype=self.dtype)
         for idx, cslice, gslice in chunk_iterator:
             output[gslice] = self.get_chunk_data(idx, slices=cslice)
-        
+
         if len(squeeze_axis) > 0:
             return np.squeeze(output, axis=squeeze_axis)
         return output
-        
+
     def set_data(self, values, slices=None):
         if slices is None:
             return self.load(values)
-        
+
         isscalar = np.isscalar(values)
         ndim = self.ndim if isscalar else values.ndim
         slices, squeeze_axis = self._process_slices(slices, squeeze=True)
@@ -86,7 +86,7 @@ class CpuDataset(Wrapper):
                 self.set_chunk_data(idx, values, slices=cslice)
             else:
                 self.set_chunk_data(idx, values[gslice], slices=cslice)
-    
+
     def load(self, data):
         if data.shape != self.shape:
             raise Exception('Data shape does not match')
@@ -97,7 +97,7 @@ class CpuDataset(Wrapper):
 
 
 class CpuDataChunk(Wrapper):
-    
+
     pass
 
 

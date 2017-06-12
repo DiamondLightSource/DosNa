@@ -10,6 +10,7 @@ test_dosna*
 results/
 .spyder*
 .spy*
+*.sublime-*
 
 # C extensions
 *.so
