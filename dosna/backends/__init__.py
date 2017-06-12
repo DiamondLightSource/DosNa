@@ -5,7 +5,7 @@ from importlib import import_module
 
 
 __current = None
-available = ['memory', 'hdf5']
+available = ['ram', 'hdf5', 'ceph']
 
 
 def use_backend(backend):

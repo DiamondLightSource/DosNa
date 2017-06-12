@@ -20,7 +20,7 @@ def use(engine=None, backend=None, engine_kw={}):
 
     global __current, Cluster, Pool, Dataset, DataChunk
     _, Cluster, Pool, Dataset, DataChunk, _ = __current = get_engine()
-    
+
 
 def compatible(engine, backend):
     if engine.name == 'joblib' and backend.name == 'memory' \
@@ -32,6 +32,8 @@ def compatible(engine, backend):
 
 
 Status = namedtuple('Status', ['engine', 'backend'])
+
+
 def status(show=False):
     engine = get_engine()
     backend = get_backend()
@@ -40,8 +42,8 @@ def status(show=False):
         log.info('Current Engine: %s' % engine.name)
         log.info('Current Backend: %s' % backend.name)
         log.info('---------------------------')
-    
+
     return Status(engine, backend)
 
 
-use('cpu', 'memory')
+use('cpu', 'ram')

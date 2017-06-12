@@ -132,7 +132,7 @@ class BasePool(object):
 
 class BaseDataset(object):
 
-    def __init__(self, pool, name, shape, dtype, fillvalue, chunks, chunk_size):
+    def __init__(self, pool, name, shape, dtype, fillvalue, chunks, csize):
         if not pool.has_dataset(name):
             raise Exception('Wrong initialization of a Dataset')
 
@@ -143,7 +143,7 @@ class BaseDataset(object):
         self._fillvalue = fillvalue
 
         self._chunks = chunks
-        self._chunk_size = chunk_size
+        self._chunk_size = csize
         self._total_chunks = np.prod(chunks)
         self._ndim = len(self._shape)
 
@@ -233,7 +233,7 @@ class BaseDataset(object):
         return tuple(map(int, np.unravel_index(idx, self.chunks)))
 
     def _local_chunk_bounds(self, idx):
-         return tuple((slice(0, min((i + 1) * s, self.shape[j]) - i * s)
+        return tuple((slice(0, min((i + 1) * s, self.shape[j]) - i * s)
                       for j, (i, s) in enumerate(zip(idx, self.chunk_size))))
 
     def _global_chunk_bounds(self, idx):
@@ -246,7 +246,8 @@ class BaseDataset(object):
         elif slices is Ellipsis:
             slices = [slice(None)]
         elif type(slices) not in [list, tuple]:
-            raise Exception('Invalid Slicing with index of type `{}`'.format(type(slices)))
+            raise Exception('Invalid Slicing with index of type `{}`'
+                            .format(type(slices)))
         else:
             slices = list(slices)
 
@@ -254,7 +255,7 @@ class BaseDataset(object):
             nmiss = self.ndim - len(slices)
             while Ellipsis in slices:
                 idx = slices.index(Ellipsis)
-                slices = slices[:idx] + ([slice(None)] * (nmiss+1)) + slices[idx+1:]
+                slices = slices[:idx] + ([slice(None)] * (nmiss + 1)) + slices[idx + 1:]
             if len(slices) < self.ndim:
                 slices = list(slices) + ([slice(None)] * nmiss)
         elif len(slices) > self.ndim:
@@ -266,7 +267,7 @@ class BaseDataset(object):
         squeeze_axis = []
         for i, s in enumerate(slices):
             if type(s) == int:
-                final_slices.append(slice(s, s+1))
+                final_slices.append(slice(s, s + 1))
                 squeeze_axis.append(i)
             elif type(s) == slice:
                 start = s.start
@@ -315,11 +316,11 @@ class BaseDataset(object):
             pad_start = slc.start - sstart * chunk_size[n]
             pad_stop = slc.stop - sstop * chunk_size[n]
 
-            _i = [] # index
-            _c = [] # chunk slices in current dimension
-            _g = [] # global slices in current dimension
+            _i = []  # index
+            _c = []  # chunk slices in current dimension
+            _g = []  # global slices in current dimension
 
-            for i in range(sstart, sstop+1):
+            for i in range(sstart, sstop + 1):
                 start = pad_start if i == sstart else 0
                 stop = pad_stop if i == sstop else chunk_size[n]
                 gchunk = i * chunk_size[n] - slc.start
@@ -356,6 +357,7 @@ class BaseDataChunk(object):
         self._idx = idx
         self._name = name
         self._shape = shape
+        self._size = np.prod(shape)
         self._dtype = dtype
         self._fillvalue = fillvalue
 
@@ -366,6 +368,10 @@ class BaseDataChunk(object):
     @property
     def shape(self):
         return self._shape
+
+    @property
+    def size(self):
+        return self._size
 
     @property
     def dtype(self):
