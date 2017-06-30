@@ -59,12 +59,6 @@ class MemPool(BasePool):
         super(MemPool, self).__init__(cluster, name, open_mode=open_mode)
         self.datasets = {}
 
-    def open(self):
-        pass
-
-    def close(self):
-        pass
-
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunks=None):
 

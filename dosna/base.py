@@ -42,7 +42,7 @@ class BaseCluster(object):
         self._connected = True
 
     def disconnect(self):
-        self._connected = True
+        self._connected = False
 
     def __enter__(self):
         if not self.connected:

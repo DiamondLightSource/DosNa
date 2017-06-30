@@ -1,23 +1,32 @@
 # Distributed Object-Store Numpy Array (DosNa)
 
-DosNa is intended to be a python wrapper around [Librados (Python)](http://docs.ceph.com/docs/master/rados/api/python/) library from [Ceph](http://ceph.com/). The main goal of DosNa is to provide easy and friendly interface to store and manage N-Dimensional datasets over a Ceph Cloud.
+DosNa is intended to be a python wrapper to distribute N-dimensional arrays over an Object Store server. The main goal of DosNa is to provide easy and friendly seamless interface to store and manage N-Dimensional datasets over a remote Cloud.
 
-It works by directly wrapping [`Cluster`](http://docs.ceph.com/docs/master/rados/api/python/#cluster-handle-api) and [`Pool/IOCtx`](http://docs.ceph.com/docs/master/rados/api/python/#input-output-context-api) API's from Librados and extending two new classes, `Dataset` and `DataChunk` that wrap and extend the behavour of a Librados [`Object`](http://docs.ceph.com/docs/master/rados/api/python/#object-interface) (that are only accessible through looping the `Pool`).
+It is designed to be modular by defining a `Cluster -> Pool -> Dataset -> DataChunk` architecture, and supports multiple **Backends** and **Engines** that extend the base abstract model to add different functionality. Each Backend represents a different Object Store type and wraps DosNa to connect and interact with such Object Store. Engines, on the other hand, add different local (or remote) multi-threading and multi-process support. Engines act as clients to the selected Backend and parallelize (or enhance) some of the functions to access the remote data.
+
+For example, the Ceph backend works by directly wrapping [`Cluster`](http://docs.ceph.com/docs/master/rados/api/python/#cluster-handle-api) and [`Pool/IOCtx`](http://docs.ceph.com/docs/master/rados/api/python/#input-output-context-api) API's from Librados and extending two new classes, `Dataset` and `DataChunk` that wrap and extend the behavior of a Librados [`Object`](http://docs.ceph.com/docs/master/rados/api/python/#object-interface) (that are only accessible through looping the `Pool`).
 
 ![](/DOSNA.png)
 
-DosNa is also inspired by the [h5py](http://www.h5py.org/) library and tries to mimic its behaviour, thus `dosna.Pool` and `dosna.Dataset` objects are equivalent objects to `h5py.File` and `h5py.Dataset` respectively (in fact, there is a `dosna.File = dosna.Pool` symlink to fully mimic h5py).
+DosNa is based on the [Librados architecture](http://docs.ceph.com/docs/master/rados/api/python/) library and tries to mimic its model of an Object Store, thus `dosna.Cluster` and `dosna.Pool` are connection objects to the remote Object Store service and the Pools (or streams) within it.
 
-A `dosna.Dataset` will automagically distribute a N-dimensional dataset across the cluster by partitioning the whole data in smaller chunks and store them in a completely distributed fashion as `dosna.DataChunks`. After a `chunk_size` is specified, data loaded to a `dosna.Dataset` will be split in to chunks of size `chunk_size` and will create different Ceph objects as `dosna.DataChunk`, each of them corresponding to a different chunk from the original data. These `dosna.DataChunk` objects are distributed along the Ceph cluster, making `dosna.Dataset` a wrapper to distribute N-dimensional datasets into many N-dimensional smaller chunks.
+A `dosna.Dataset` will *automagically* distribute a N-dimensional dataset across the cluster by partitioning the whole data in smaller chunks and store them in a completely distributed fashion as `dosna.DataChunks`. After a `chunk_size` is specified, data loaded to a `dosna.Dataset` will be split in to chunks of size `chunk_size` and will create different remote objects as `dosna.DataChunk`, each of them corresponding to a different chunk from the original data. These `dosna.DataChunk` objects are distributed along the Object Store, making `dosna.Dataset` a wrapper (acting as a lookup table) to distribute N-dimensional datasets into many N-dimensional smaller chunks.
 
-An existing `dosna.Dataset` can be used as an `h5py.Dataset` object or a Numpy Array. This is, a dataset object supports standard slicing `ds[:, :, :]` and `ds[:, :, :] = 5` and the `dosna.Dataset` object will take care behind the scenes to access all the `dosna.DataChunk` needed to reconstruct the desired slices.
+An existing `dosna.Dataset` can be used as an `h5py.Dataset` object or a Numpy Array. This is, a dataset object supports standard slicing `ds[:, :, :]` (getter) and `ds[:, :, :] = 5` (setter) and the `dosna.Dataset` object will take care behind the scenes to access all the `dosna.DataChunk` needed to reconstruct the desired slices and retrieve or update them accordingly.
 
 ## Installation
 
-Requirements: 
+Requirements:
 
- - Library: Librados, numpy, joblib
- - Examples: Scipy, Matplotlib, Scikit-Image
+ - Library: [numpy](http://www.numpy.org/)
+ - Backends:
+     + ram: none
+     + hdf5: [h5py](http://docs.h5py.org/en/latest/quick.html)
+     + ceph: [librados](http://docs.ceph.com/docs/master/rados/api/librados-intro/#getting-librados-for-python)
+ - Engines:
+     + cpu: none
+     + joblib: [joblib](https://pythonhosted.org/joblib/)
+     + mpi: [mpi4py](http://mpi4py.scipy.org/)
 
 Clone repository:
 
@@ -31,13 +40,13 @@ Install it:
 cd DosNa && python setup.py install
 ```
 
-Configure cluster:
+Configure connection to a Ceph cluster (for using with Ceph backend):
 
  - Create a `ceph.conf` file with the IP or HOST addresses of the CEPH entry and cluster nodes (see `ceph.sample.conf` as an example)
-    
-## Basica Usage
 
-Create a Pool object and a dataset:
+## Basic Usage
+
+Create a Pool object and a dataset. In the example bellow a dataset of size `(100, 100, 100)` is created and
 
 ```python
 import dosna as dn
@@ -46,8 +55,8 @@ import numpy as np
 data = np.random.randn(100, 100, 100)
 
 C = dn.Cluster().connect()
-pool = C.create_pool('tutorial')
-ds = pool.create_dataset('data', data=data, chunks=32) # chunking of int maps to dimensions -> (32, 32, 32)
+pool = C.create_pool('dosna_tutorial')
+ds = pool.create_dataset('data', data=data, chunks=(32,32,32))
 
 print(ds[0, 0, :10])
 # [ 0.38475526 -1.02690848  0.88673305 -0.12398208  1.49337365 -1.91976844
@@ -57,14 +66,14 @@ assert np.allclose(ds[...], data) # True
 pool.close()
 C.disconnect()
 ```
-    
-Same example can also be run with context managers, for a more safe access to the clusters and pools without forgeting to `close` corresponding objects:
- 
+
+The same example can also be run with context managers, for a more safe access to the clusters and pools without forgetting to `close` corresponding objects:
+
 ```python
 data = np.random.randn(100, 100, 100)
 
 with dn.Cluster() as C:
-    with C['tutorial'] as pool: # Note that __getitem__ retrieves an existing pool
+    with C['dosna_tutorial'] as pool: # Note that __getitem__ retrieves an existing pool
         ds = pool['data'] # Similarly, retrieve an existing dataset
         print(ds[0, 0, :10])
         # [ 0.38475526 -1.02690848  0.88673305 -0.12398208  1.49337365 -1.91976844
@@ -73,42 +82,76 @@ with dn.Cluster() as C:
         assert np.allclose(ds[36:80, 89:, :56], data[36:80, 89:, :56])
 ```
 
-## Using default Cluster
+Note that the example above assumes that the pool `dosna_tutorial` already exists, as was created in the initial example. Pool objects are not expected to be created carelessly, instead, a single (or few) pools are expected to exist within an Object Store, and although DosNa could create/remove them, its intended usage is to make use of existing pools.
 
-For programs working with a single `dosna.Cluster` object (as will be usual) the cluster instance can be completely abstracted by using `dosna.autoinit`. It will make every `dosna.Pool` instance connect to the singleton cluster instance.
+## Selecting Backend and Engines
 
-```python
-dn.auto_init()
-
-with Pool('tutorial') as p:
-    ds = p['data'] 
-    [...]
-```
-
-## h5py compatibility
-
-DosNa also shadows `dosna.Pool` as `dosna.File` for compatibilities with h5py, allowing the following piece of code to be run with either of libraries:
+Selecting backend is very trivial and can be done at any point. However, the backend wont change for already created `Cluster` instances. New `Cluster` instances have to be created in order to see the change:
 
 ```python
-import numpy as np
-
-if True: # Change to False to run the same code with DosNa instead of h5py
-    import h5py as h5
-else:
-    import dosna as h5
-    h5.auto_init(njobs=1) # Change to number of jobs
-
-with h5.File('/tmp/data.h5', 'w') as f: # since dosna.File subclasses dosna.Pull this will work in dosna
-    f.create_dataset('data', data=np.random.rand(100, 100, 100), chunks=(32, 32, 32), fillvalue=-1)
-
-f = h5.File('/tmp/data.h5', 'r')
-data = f['data']
-print(data[0, 0, :10])
-f.close()
+dn.use(backend='hdf5') # One of ['ram', 'hdf5', 'ceph']
 ```
 
-Note that the above script will run without errors using either h5py or dosna backend. See `examples/basic_h5py_compat.py` for more details.
+Similarly, engines can be selected as:
 
-## Multi threading
+```python
+dn.use(engine='mpi') # One of ['cpu', 'joblib', 'mpi']
+```
 
-All `dosna.Cluster`, `dosna.Pool` and `dosna.Dataset` accept a `njobs` parameter (`1` or `None` by default) that is propagated through the childrens (from Cluster to Pool and Pool to Dataset) if not specified (`None`) in the children. It will parallelize the chunk gathering and setting over multiple threads using [joblib](https://pythonhosted.org/joblib/).
+However, a Backend and Engine is not expected to change dynamically during the execution of an script, and thus, although DosNa can handle does changes, its expected usage is to define the Engine and Backend manually after the import at the top of the script:
+
+```python
+import dosna as dn
+dn.use(backend='hdf5', engine='mpi')
+
+# Rest of the script
+```
+
+## Backends
+
+There are currently 2 test backends (`ram` and `hdf5`) and 1 backend wrapping a real object store (`ceph`).
+
+### Ram
+
+The `ram` (default) backend simulates an on-memory Object Store by defining the Cluster as a standard python dictionary. Similarly, a Pool acts as a nested dictionary and Dataset as another dictionary working as lookup table for all the existing chunks, with additional attributes such as the dataset shape, the dataset data type and the size of the chunks. DataChunks are then on-memory numpy arrays.
+
+This backend is the quickest one and very useful to test different functionality of DosNa. It is important to note that when used with MPI Engine it will have an unpredictable weird behavior, as each process will have its own copy of the data on memory. It will work with Joblib Engine though, as long as the `multithreading` option is selected.
+
+### Hdf5
+
+Simulates an on-disk Object Store by defining the Cluster, Pool and Dataset as an on-disk folder tree. DataChunks are then automatically created HDF5 datasets inside the *Dataset* folder, containing a `/data` dataset inside them with the actual data.
+
+This backend is useful for testing multi-processing Engines (Joblib with `multiprocessing` and MPI) as the on-disk storage makes easy to distribute h`5py.Dataset` instances over the processes without corrupting the underlying data.
+
+Although it is a *test* backend, it is probably very efficient and could replace standard `h5py` in extremely parallel scenarios, as DataChunks are separate HDF5 files and thus, it would allow for complete parallelization (both read and write) as long as no 2 processes access the same DataChunk simultaneously.
+
+### Ceph
+
+Ceph backend connects to a Ceph Cluster. Cluster and Pool objects act as a connection to the cluster and the pools/streams within it. Creation or deletion of pools happens directly in the Object Store and similarly, a pool can create, retrieve or remove Datasets, represented as Ceph Objects with metadata and lookup information for the DataChunks that contain the appropiate data. DataChunks are another type of Ceph Objects that contain the numerical data in binarized numpy arrays format.
+
+## Engines
+
+There are 3 different backends: `cpu`, `joblib` and `mpi`.
+
+
+### Cpu
+
+Although the name might be a bit misleading, it refers to a single process single thread instance. This is, a sequential program with no parallelization at all. It is the default engine as it is the easiest to test and maintain and will act as a simple wrapper along the selected Backend.
+
+### Joblib
+
+Will act as a local multi-threading or multi-processing backend. It accepts `njobs` and `jlbackend` parameters, the first one indicating the number of threads or processes to use while the second one indicating whether to use multi-threading or multi-processing (values for `jlbackend` are `threading` or `multiprocessing`).
+
+This engine will act as the CPU backend for most of the functionallity, but incorporates additional parallelization when 1) slicing and 2) mapping/applying functions to all the chunks.
+
+This is, when slicing a dataset `ds[10:50, 10:50, 10:50]`, the Dataset instance will first calculate all the DataChunks involved in such slicing, and then using joblib each thread/process will gather/update the data from different DataChunks (acting as a map-reduce operator).
+
+Similarly, a Dataset contains `ds.map` and `ds.apply` functions that map (return a modified copy) or apply (in-place) a function to every chunk in the dataset. This function will be parallelized by each thread/process taking care of applying the function to a different chunk.
+
+Last, a whole numpy or h5py array can be loaded into an object store, by populating the corresponding DataChunks by doing `ds.load(data)`, this function will also be parallelized by spawning threads or processes that update different chunks.
+
+### MPI
+
+The MPI backend is designed to work fully in parallel by using multiple processes. Different from Joblib, processes are not spawned when functions are called, instead, multiple processes exist from the start of the script and each of them contains a copy of the `Cluster` object. From there, MPI backend adds wrappers to most of the creation/deletion functions so that only the lead process (or root process, commonly the one with rank 0) creates or deletes the resource while the others wait for it. The engine also adds appropriate barriers when needed so that every process contains the same state of the remote Object Store. Last, the MPI Engine does not add parallelization over the slicing operation, as it is assumed that the script will be programmed so that different processes access different slices of the dataset. To that end, `Cluster`, `Pool` and `Dataset` objects contain `mpi_size`, `mpi_rank` and `mpi_is_root` attributes when used with the MPI engine.
+
+Similar to joblib, it also extends `dataset.load`, `dataset.map` and `dataset.apply` so that automatically each of the process takes care of different chunk.

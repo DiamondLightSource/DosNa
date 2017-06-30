@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-sudo python -m unittest discover -v dosna
+PYTHONPATH=. python -m unittest discover -s tests -v
