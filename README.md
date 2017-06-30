@@ -16,6 +16,8 @@ An existing `dosna.Dataset` can be used as an `h5py.Dataset` object or a Numpy A
 
 ## Installation
 
+There are no requirements other than NumPy to install and use DosNa with the default Backend and Engine. However, specific backend and engines require different dependencies listed as follows:
+
 Requirements:
 
  - Library: [numpy](http://www.numpy.org/)
@@ -155,3 +157,46 @@ Last, a whole numpy or h5py array can be loaded into an object store, by populat
 The MPI backend is designed to work fully in parallel by using multiple processes. Different from Joblib, processes are not spawned when functions are called, instead, multiple processes exist from the start of the script and each of them contains a copy of the `Cluster` object. From there, MPI backend adds wrappers to most of the creation/deletion functions so that only the lead process (or root process, commonly the one with rank 0) creates or deletes the resource while the others wait for it. The engine also adds appropriate barriers when needed so that every process contains the same state of the remote Object Store. Last, the MPI Engine does not add parallelization over the slicing operation, as it is assumed that the script will be programmed so that different processes access different slices of the dataset. To that end, `Cluster`, `Pool` and `Dataset` objects contain `mpi_size`, `mpi_rank` and `mpi_is_root` attributes when used with the MPI engine.
 
 Similar to joblib, it also extends `dataset.load`, `dataset.map` and `dataset.apply` so that automatically each of the process takes care of different chunk.
+
+## Creating a new Backend
+
+Backends extend the `BaseCluster`, `BasePool`, `BaseDataset` and `BaseDataChunk` templates present at `dosna.base` class to add functionality regarding the connection and creation of the respective objects in the new Object Store.
+
+The methods that have to be rewritten are:
+
+- Cluster
+    + `connect` and `disconnect`
+    + `create_pool`,`get_pool`, `has_pool` and `del_pool`
+- Pool
+    + `open` and `close`
+    + `create_dataset`, `get_dataset`, `has_dataset` and `del_dataset`
+- Dataset
+    + `create_chunk`, `get_chunk`, `has_chunk` and `del_chunk`.
+- DataChunk
+    + `get_data`, `set_data`
+
+For quick examples of how to create a new backend have a look at `dosna.backends.ram` or `dosna.backends.hdf5`.
+
+## Creating a new Engine
+
+Engines are sightly more complicated, as they don't directly extend the `dosna.base` templates, but extend `dosna.base.Wrapper` class, which creates wrapper objects around the currently selected Backend.
+
+The Engine objects, as they act as wrappers, have to override all the create/delete/get operations to return also the corresponding wrapped object instead of the native Backend object. This is, `engine.Cluster` wraps `backend.Cluster`, but has to redefine `create_pool` so that `engine.Pool` is returned instead of `backend.Pool` when `create_pool` is called (see `dosna.backends.cpu` for a quick example).
+
+The list of methods modified to **properly wrap** a Backend are:
+
+- Cluster:
+    + `create_pool`, `get_pool`, `has_pool`, `del_pool`
+- Pool:
+    + `create_dataset`, `get_dataset`, `has_dataset` and `del_dataset`
+- Dataset
+    + `create_chunk`, `get_chunk`, `has_chunk` and `del_chunk`.
+    + `clone` to clone a dataset (only its structure/chunk layout or also the underlying chunks)
+
+The list of methods that can be extended to **ad functionality** are:
+
+- Dataset:
+    + `get_data`, `set_data` to override slicing operations
+    + `load` to load and distribute a whole dataset along DataChunks
+    + `map` to map a function to all the chunks independently and return a modified copy of the dataset.
+    + `apply` to apply a function to all the chunks in-place

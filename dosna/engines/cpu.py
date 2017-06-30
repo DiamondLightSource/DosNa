@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from builtins import range
+
 from .. import Engine
 from ..base import Wrapper
 from ..backends import get_backend
@@ -87,13 +89,43 @@ class CpuDataset(Wrapper):
             else:
                 self.set_chunk_data(idx, values[gslice], slices=cslice)
 
+    def clear(self):
+        for idx in range(self.total_chunks):
+            idx = self._idx_from_flat(idx)
+            self.del_chunk(idx)
+
+    def delete(self):
+        self.instance._pool.del_dataset(self.name)
+
     def load(self, data):
         if data.shape != self.shape:
             raise Exception('Data shape does not match')
-        for idx in np.ndindex(*self.chunks):
+        for idx in range(self.total_chunks):
+            idx = self._idx_from_flat(idx)
             gslices = self._global_chunk_bounds(idx)
             lslices = self._local_chunk_bounds(idx)
             self.set_chunk_data(idx, data[gslices], slices=lslices)
+
+    def map(self, func, output_name):
+        out = self.clone(output_name)
+        for idx in range(self.total_chunks):
+            idx = self._idx_from_flat(idx)
+            data = func(self.get_chunk_data(idx))
+            out.set_chunk_data(idx, data)
+        return out
+
+    def apply(self, func):
+        for idx in range(self.total_chunks):
+            idx = self._idx_from_flat(idx)
+            data = func(self.get_chunk_data(idx))
+            self.set_chunk_data(idx, data)
+
+    def clone(self, output_name):
+        out = self.instance._pool.create_dataset(
+            output_name, shape=self.shape,
+            dtype=self.dtype, chunks=self.chunk_size,
+            fillvalue=self.fillvalue)
+        return CpuDataset(out)
 
 
 class CpuDataChunk(Wrapper):

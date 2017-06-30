@@ -55,6 +55,7 @@ class MpiTimer(object):
 
     def __enter__(self):
         self.tstart = time.time()
+        return self
 
     def __exit__(self, type, value, traceback):
         mpi_barrier()

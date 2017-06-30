@@ -19,6 +19,10 @@ class Wrapper(object):
         self.instance = instance
 
     def __getattr__(self, attr):
+        """
+        Attributes/Fundtions that do not exist in the extended class
+        are going to be passed to the instance being wrapped
+        """
         return self.instance.__getattribute__(attr)
 
     def __enter__(self):
@@ -209,16 +213,22 @@ class BaseDataset(object):
     def __setitem__(self, slices, values):
         return self.set_data(values, slices=slices)
 
-    def map(self, func, padding, name):
+    def clear(self):
+        raise NotImplementedError('`clear` not implemented for this backend')
+
+    def delete(self):
+        raise NotImplementedError('`delete` not implemented for this backend')
+
+    def map(self, func, output_name):
         raise NotImplementedError('`map` not implemented for this backend')
 
-    def apply(self, func, padding):
-        raise NotImplementedError('`map` not implemented for this backend')
+    def apply(self, func):
+        raise NotImplementedError('`apply` not implemented for this backend')
 
     def load(self, data):
         raise NotImplementedError('`load` not implemented for this backend')
 
-    def clone(self, name):
+    def clone(self, output_name):
         raise NotImplementedError('`clone` not implemented for this backend')
 
     def get_data(self, slices=None):
@@ -245,6 +255,8 @@ class BaseDataset(object):
             slices = [slices]
         elif slices is Ellipsis:
             slices = [slice(None)]
+        elif np.isscalar(slices):
+            slices = [int(slices)]
         elif type(slices) not in [list, tuple]:
             raise Exception('Invalid Slicing with index of type `{}`'
                             .format(type(slices)))

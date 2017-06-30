@@ -3,6 +3,8 @@
 import logging as log
 import numpy as np
 
+from builtins import range
+
 import tempfile
 from joblib import Parallel, delayed, dump, load
 
@@ -114,23 +116,66 @@ class JoblibDataset(CpuDataset):
             for idx, cslice, gslice in chunk_iterator
         )
 
+    def clear(self):
+        Parallel(n_jobs=self.njobs, backend=self.jlbackend)(
+            delayed(_delete_chunk)(self, idx)
+            for idx in range(self.total_chunks)
+        )
+
+    def delete(self):
+        self.instance._pool.del_dataset(self.name)
+
     def load(self, data):
         if data.shape != self.shape:
             raise Exception('Data shape does not match')
-        chunks = self.chunks
 
         with tempfile.NamedTemporaryFile() as f:
             dinput = self._make_temporary_memmap(f.name, data=data)
             Parallel(n_jobs=self.njobs, backend=self.jlbackend)(
                 delayed(_populate_dataset_joblib)(self, idx, dinput)
-                for idx in np.ndindex(*chunks)
+                for idx in range(self.total_chunks)
             )
+
+    def map(self, func, output_name):
+        out = self.clone(output_name)
+        Parallel(n_jobs=self.njobs, backend=self.jlbackend)(
+            delayed(_map_function_chunk)(self, idx, out, func)
+            for idx in range(self.total_chunks)
+        )
+        return out
+
+    def apply(self, func):
+        Parallel(n_jobs=self.njobs, backend=self.jlbackend)(
+            delayed(_apply_function_chunk)(self, idx, func)
+            for idx in range(self.total_chunks)
+        )
+
+    def clone(self, output_name):
+        out = self.instance._pool.create_dataset(
+            output_name, shape=self.shape,
+            dtype=self.dtype, chunks=self.chunk_size,
+            fillvalue=self.fillvalue)
+        return JoblibDataset(out)
 
 
 def _populate_dataset_joblib(inst, idx, dinput):
+    idx = inst._idx_from_flat(idx)
     gslices = inst._global_chunk_bounds(idx)
     cslices = inst._local_chunk_bounds(idx)
     inst.set_chunk_data(idx, dinput[gslices], slices=cslices)
+
+def _delete_chunk(inst, idx):
+    inst.del_chunk(inst._idx_from_flat(idx))
+
+def _map_function_chunk(inst, idx, out, func):
+    idx = inst._idx_from_flat(idx)
+    data = func(inst.get_chunk_data(idx))
+    out.set_chunk_data(idx, data)
+
+def _apply_function_chunk(inst, idx, func):
+    idx = inst._idx_from_flat(idx)
+    data = func(inst.get_chunk_data(idx))
+    inst.set_chunk_data(idx, data)
 
 def _get_chunk_data_joblib(inst, chunk_idx, cslice, gslice, doutput):
     doutput[gslice] = inst.get_chunk_data(chunk_idx, slices=cslice)

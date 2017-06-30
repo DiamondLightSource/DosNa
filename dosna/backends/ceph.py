@@ -118,6 +118,7 @@ class CephPool(BasePool):
 
     def del_dataset(self, name):
         if self.has_dataset(name):
+            self.get_dataset(name).clear()
             self._ioctx.remove_object(name)
         else:
             raise Exception('Dataset `%s` does not exist' % name)
@@ -167,8 +168,7 @@ class CephDataset(BaseDataset):
 
     def del_chunk(self, idx):
         if not self.has_chunk(idx):
-            raise Exception('DataChunk `{}` does not exist'.format(idx))
-        self._ioctx.remove_object(self._idx2name(idx))
+            self._ioctx.remove_object(self._idx2name(idx))
 
 
 class CephDataChunk(BaseDataChunk):

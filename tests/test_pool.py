@@ -27,7 +27,8 @@ class PoolTest(unittest.TestCase):
 
         dn.use(backend=self.BACKEND, engine=self.ENGINE)
         self.C = dn.Cluster(self.CONFIG)
-        if self.BACKEND != 'ceph':  # Avoid creating pools in ceph
+        if self.BACKEND != 'ceph' and not self.C.has_pool(self.POOL):
+            # Create pool for 'ram' and 'hdf5' backends
             self.C.create_pool(self.POOL)
         self.pool = self.C[self.POOL]
         self.fakeds = 'NotADataset'

@@ -135,9 +135,8 @@ class MemDataset(BaseDataset):
         return idx in self.data_chunks
 
     def del_chunk(self, idx):
-        if not self.has_chunk(idx):
-            raise Exception('DataChunk `{}` does not exist'.format(idx))
-        del self.data_chunks[idx]
+        if self.has_chunk(idx):
+            del self.data_chunks[idx]
 
 
 class MemDataChunk(BaseDataChunk):

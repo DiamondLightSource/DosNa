@@ -39,12 +39,10 @@ class H5Cluster(BaseCluster):
 
     def create_pool(self, path, open_mode='a'):
         path = self._validate_path(path)
-        if os.path.exists(path):
-            raise Exception('Path `%s` already exists' % path)
-
         log.debug('Creating pool `%s`' % path)
 
-        os.makedirs(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
         flag = os.path.join(path, '.dosna')
         with open(os.path.join(path, '.dosna'), 'w'):
             os.utime(flag, None)
@@ -180,9 +178,8 @@ class H5Dataset(BaseDataset):
         return os.path.isfile(self._idx2name(idx))
 
     def del_chunk(self, idx):
-        if not self.has_chunk(idx):
-            raise Exception('DataChunk `{}` does not exist'.format(idx))
-        os.remove(self._idx2name(idx))
+        if self.has_chunk(idx):
+            os.remove(self._idx2name(idx))
 
 
 class H5DataChunk(BaseDataChunk):

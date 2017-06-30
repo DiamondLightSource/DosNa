@@ -51,5 +51,7 @@ if __name__ == "__main__":
         ClusterTest.ENGINE = sys.argv.pop(1)
     if len(sys.argv) > 1:
         ClusterTest.CONFIG = sys.argv.pop(1)
+    if len(sys.argv) > 1:
+        ClusterTest.POOL = sys.argv.pop(1)
 
     unittest.main(verbosity=2)

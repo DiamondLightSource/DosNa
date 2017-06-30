@@ -2,6 +2,8 @@
 
 import logging as log
 
+from builtins import range
+
 from mpi4py import MPI
 
 from .. import Engine
@@ -122,6 +124,17 @@ class MpiDataset(CpuDataset, MpiMixin):
         chunk = self.instance.get_chunk(*args, **kwargs)
         return MpiDataChunk(chunk)
 
+    def clear(self):
+        for idx in range(self.mpi_rank, self.total_chunks, self.mpi_size):
+            idx = self._idx_from_flat(idx)
+            self.del_chunk(idx)
+        self.mpi_barrier()
+
+    def delete(self):
+        if self.mpi_is_root:
+            self.instance._pool.del_dataset(self.name)
+        self.mpi_barrier()
+
     def load(self, data):
         if data.shape != self.shape:
             raise Exception('Data shape does not match')
@@ -132,6 +145,33 @@ class MpiDataset(CpuDataset, MpiMixin):
             lslices = self._local_chunk_bounds(idx)
             self.set_chunk_data(idx, data[gslices], slices=lslices)
         self.mpi_barrier()
+
+    def map(self, func, output_name):
+        out = self.clone(output_name)
+        for idx in range(self.mpi_rank, self.total_chunks, self.mpi_size):
+            idx = self._idx_from_flat(idx)
+            data = func(self.get_chunk_data(idx))
+            out.set_chunk_data(idx, data)
+        self.mpi_barrier()
+        return out
+
+    def apply(self, func):
+        for idx in range(self.mpi_rank, self.total_chunks, self.mpi_size):
+            idx = self._idx_from_flat(idx)
+            data = func(self.get_chunk_data(idx))
+            self.set_chunk_data(idx, data)
+        self.mpi_barrier()
+
+    def clone(self, output_name):
+        if self.mpi_is_root:
+            out = self.instance._pool.create_dataset(
+                output_name, shape=self.shape,
+                dtype=self.dtype, chunks=self.chunk_size,
+                fillvalue=self.fillvalue)
+        else:
+            out = None
+        out = self.mpi_comm.bcast(out, root=0)
+        return MpiDataset(out, self.mpi_comm)
 
 
 class MpiDataChunk(Wrapper):
