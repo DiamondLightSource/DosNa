@@ -22,19 +22,33 @@ from scipy.misc import imsave
 # Test parameters
 
 parser = argparse.ArgumentParser(description='Test Gaussian Convolution')
-parser.add_argument('--backend', dest='backend',help='(ram|hdf5|ceph)',
-                    default='hdf5')
-parser.add_argument('--cluster', dest='cluster', default='/tmp')
-parser.add_argument('--pool', dest='pool', default='test_dosna')
-parser.add_argument('--out', dest='out', default='.')
+parser.add_argument('--backend', dest='backend', default='hdf5',
+                    help='Select backend to use (ram | *hdf5 | ceph)')
+parser.add_argument('--engine', dest='engine', default='mpi',
+                    help='Select engine to use (cpu | joblib | *mpi)')
+parser.add_argument('--cluster', dest='cluster', default='/tmp',
+                    help='Configuration file or directory for Cluster')
+parser.add_argument('--pool', dest='pool', default='test_dosna',
+                    help='Existing pool name in the selected backend')
+parser.add_argument('--out', dest='out', default='.',
+                    help='Output directory for the results (default ".").')
 
 parser.add_argument('--data_sizes', dest='data_sizes', type=int, nargs='+',
-                    default=[128, 256, 512])
+                    default=[128, 256, 512],
+                    help='List of sizes for datasets to test in. '
+                    'Sizes are 3D, e.g. 128 -> 128x128x128')
 parser.add_argument('--chunk_sizes', dest='chunk_sizes', type=int, nargs='+',
-                    default=[24, 36, 48, 60, 72, 96, 128])
-parser.add_argument('--sigma', dest='sigma', type=float, default=1.5)
-parser.add_argument('--trunc', dest='trunc', type=int, default=3)
-parser.add_argument('--ntest', dest='ntest', type=int, default=10)
+                    default=[24, 36, 48, 60, 72, 96, 128],
+                    help='List of sizes for chunking the datasets. '
+                    'Sizes are 3D, e.g. 32 -> 32x32x32')
+
+parser.add_argument('--sigma', dest='sigma', type=float, default=1.5,
+                    help='Determines the sigma to be used for the '
+                    'Gaussian Convolution')
+
+parser.add_argument('--ntest', dest='ntest', type=int, default=10,
+                    help='Number of tests to be run for each data size '
+                    'and chunk size')
 
 args = parser.parse_args()
 
@@ -43,11 +57,11 @@ args = parser.parse_args()
 DATA_SIZE = args.data_sizes
 CHUNK_SIZE = args.chunk_sizes
 
-dn.use(backend=args.backend, engine='mpi')
+dn.use(backend=args.backend, engine=args.engine)
 
 NTESTS = args.ntest
 SIGMA = args.sigma
-TRUNC = args.trunc
+TRUNC = 3
 CLUSTERCFG = args.cluster
 POOL = args.pool
 OUT_PATH = args.out
