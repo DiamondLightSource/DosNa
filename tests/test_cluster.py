@@ -45,13 +45,21 @@ class ClusterTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        ClusterTest.BACKEND = sys.argv.pop(1)
-    if len(sys.argv) > 1:
-        ClusterTest.ENGINE = sys.argv.pop(1)
-    if len(sys.argv) > 1:
-        ClusterTest.CONFIG = sys.argv.pop(1)
-    if len(sys.argv) > 1:
-        ClusterTest.POOL = sys.argv.pop(1)
+    import argparse
+    parser = argparse.ArgumentParser(description='TestCluster')
+    parser.add_argument('--backend', dest='backend', default='ram',
+                        help='Select backend (ram | hdf5 | ceph)')
+    parser.add_argument('--engine', dest='engine', default='cpu',
+                        help='Select engine (cpu | joblib | mpi)')
+    parser.add_argument('--cluster', dest='cluster', default=None,
+                        help='Cluster config directory or file '
+                        '(backend dependant)')
+
+    args, unknownargs = parser.parse_known_args()
+    sys.argv = [sys.argv[0]] + unknownargs
+
+    ClusterTest.BACKEND = args.backend
+    ClusterTest.ENGINE = args.engine
+    ClusterTest.CONFIG = args.cluster
 
     unittest.main(verbosity=2)

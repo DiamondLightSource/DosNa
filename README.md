@@ -200,3 +200,61 @@ The list of methods that can be extended to **ad functionality** are:
     + `load` to load and distribute a whole dataset along DataChunks
     + `map` to map a function to all the chunks independently and return a modified copy of the dataset.
     + `apply` to apply a function to all the chunks in-place
+
+## Running tests
+
+### Unit Tests
+
+For checking the general library functionality run tests as follows:
+
+```bash
+sh run_tests.sh
+```
+
+For checking specific backends or engines run add appropriate parameters:
+
+```bash
+sh run_tests.sh --backend <backend> --engine <engine>
+```
+
+Other parameters are available to setup backends, engines and pools appropriately (check `sh run_tests.sh --help` for more info).
+
+It is important to note that:
+
+- `ram` backend doesn't work properly with Joblib and MPI engines.
+- `hdf5` backend requires to provide an existing folder (and pool inside it) as `--cluster` parameter.
+- `ceph` backend requires a configuration file passed as `--cluster`.
+
+And last, to run tests with `mpi` the script has to be called as:
+
+```bash
+mpiexec -n <nproc> sh run_tests.sh
+```
+
+where `<nproc>` is an integer indicating the number of MPI cores to spawn.
+
+### Quick backend testing
+
+There are few examples for testing individual or multiple backends and engines in the `examples` folder. Can be run as an standard python program, or through `sh run_mpi.sh <nproc> <script>`, where script is the path to the script to be run, if the MPI engine is going to be used.
+
+### Convolution test
+
+A test of computing 3D Gaussian Convolutions over an 3D dataset is available at `examples/convolutions.py`. This script will create datasets of different sizes with different chunk sizes and perform a 3D convolution over the chunks, as well as performing three separable 1D convolutions (with the same results). Timings for all convolutions for different data size and data chunks will be stored on an output HDF5 file.
+
+The script can be used to analyze the impact of chunk sizes and dataset sizes on different backends and engines.
+
+To use the script:
+
+```bash
+python examples/convolutions.py ... --out=<outdir>
+```
+
+To run it with the MPI engine:
+
+```bash
+sh run_mpi.sh <nproc> examples/convolutions.py ... --out=<outdir>
+```
+
+For further parameters specifying the engine, backend or other parameters as data sizes or chunk sizes to be tested call it with `--help`.
+
+The resulting HDF5 file with timings and couple of images for visual verification will be stored in `<outdir>`.

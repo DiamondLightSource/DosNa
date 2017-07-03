@@ -22,7 +22,8 @@ from scipy.misc import imsave
 # Test parameters
 
 parser = argparse.ArgumentParser(description='Test Gaussian Convolution')
-parser.add_argument('--backend', dest='backend', default='hdf5')
+parser.add_argument('--backend', dest='backend',help='(ram|hdf5|ceph)',
+                    default='hdf5')
 parser.add_argument('--cluster', dest='cluster', default='/tmp')
 parser.add_argument('--pool', dest='pool', default='test_dosna')
 parser.add_argument('--out', dest='out', default='.')
@@ -82,7 +83,7 @@ def create_random_dataset(DS):
 # Output Dataset
 
 def get_output_dataset():
-    dname = '{}/{}/{}'.format(engine.name, backend.name, mpi_size())
+    dname = '{}/{}'.format(backend.name, mpi_size())
     fname = join(OUT_PATH, 'result.h5')
     if mpi_root():
         shape = (len(DATA_SIZE), len(CHUNK_SIZE), 3, NTESTS)
@@ -99,7 +100,7 @@ def get_output_dataset():
                 g[dname].attrs['axis3_label'] = '# Tests'
                 g[dname].attrs['axis0_value'] = DATA_SIZE
                 g[dname].attrs['axis1_value'] = CHUNK_SIZE
-                g[dname].attrs['axis2_value'] = np.array(['3D', '1D'], dtype='S4')
+                g[dname].attrs['axis2_value'] = np.array(['DATA', '3D', '1D'], dtype='S4')
                 g[dname].attrs['axis3_value'] = list(range(NTESTS))
 
     mpi_barrier()

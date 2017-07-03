@@ -65,13 +65,25 @@ class PoolTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        PoolTest.BACKEND = sys.argv.pop(1)
-    if len(sys.argv) > 1:
-        PoolTest.ENGINE = sys.argv.pop(1)
-    if len(sys.argv) > 1:
-        PoolTest.CONFIG = sys.argv.pop(1)
-    if len(sys.argv) > 1:
-        PoolTest.POOL = sys.argv.pop(1)
+    import argparse
+    parser = argparse.ArgumentParser(description='TestPool')
+    parser.add_argument('--backend', dest='backend', default='ram',
+                        help='Select backend (ram | hdf5 | ceph)')
+    parser.add_argument('--engine', dest='engine', default='cpu',
+                        help='Select engine (cpu | joblib | mpi)')
+    parser.add_argument('--cluster', dest='cluster', default=None,
+                        help='Cluster config directory or file '
+                        '(backend dependant)')
+    parser.add_argument('--pool', dest='pool', default='test_dosna',
+                        help='Existing pool to use during tests '
+                        '(default: test_dosna).')
+
+    args, unknownargs = parser.parse_known_args()
+    sys.argv = [sys.argv[0]] + unknownargs
+
+    PoolTest.BACKEND = args.backend
+    PoolTest.ENGINE = args.engine
+    PoolTest.CONFIG = args.cluster
+    PoolTest.POOL = args.pool
 
     unittest.main(verbosity=2)
