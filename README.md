@@ -29,6 +29,8 @@ Requirements:
      + cpu: none
      + joblib: [joblib](https://pythonhosted.org/joblib/)
      + mpi: [mpi4py](http://mpi4py.scipy.org/)
+ - Examples:
+     + `convolutions.py`: [scipy](https://www.scipy.org/)
 
 Clone repository:
 
