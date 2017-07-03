@@ -8,6 +8,7 @@ from os.path import join
 import numpy as np
 import h5py as h5
 
+import argparse
 import tempfile
 
 import dosna as dn
@@ -20,27 +21,35 @@ from scipy.misc import imsave
 ###############################################################################
 # Test parameters
 
-#DATA_SIZE = [128, 256, 512]
-#CHUNK_SIZE = [24, 36, 48, 60, 72, 96, 128]
-#NTESTS = 10
+parser = argparse.ArgumentParser(description='Test Gaussian Convolution')
+parser.add_argument('--backend', dest='backend', default='hdf5')
+parser.add_argument('--cluster', dest='cluster', default='/tmp')
+parser.add_argument('--pool', dest='pool', default='test_dosna')
+parser.add_argument('--out', dest='out', default='.')
 
-DATA_SIZE = [128]
-CHUNK_SIZE = [60]
-NTESTS = 10
+parser.add_argument('--data_sizes', dest='data_sizes', type=int, nargs='+',
+                    default=[128, 256, 512])
+parser.add_argument('--chunk_sizes', dest='chunk_sizes', type=int, nargs='+',
+                    default=[24, 36, 48, 60, 72, 96, 128])
+parser.add_argument('--sigma', dest='sigma', type=float, default=1.5)
+parser.add_argument('--trunc', dest='trunc', type=int, default=3)
+parser.add_argument('--ntest', dest='ntest', type=int, default=10)
 
-SIGMA = 3
-TRUNC = 4
+args = parser.parse_args()
 
-if len(sys.argv) != 5:
-    raise ValueError('Invalid number of arguments: '
-                     '[backend, clustercfg, pool, output] '
-                     'expected')
+###############################################################################
 
-dn.use(backend=sys.argv[1], engine='mpi')
+DATA_SIZE = args.data_sizes
+CHUNK_SIZE = args.chunk_sizes
 
-CLUSTERCFG = sys.argv[2]
-POOL = sys.argv[3]
-OUT_PATH = sys.argv[4]
+dn.use(backend=args.backend, engine='mpi')
+
+NTESTS = args.ntest
+SIGMA = args.sigma
+TRUNC = args.trunc
+CLUSTERCFG = args.cluster
+POOL = args.pool
+OUT_PATH = args.out
 
 engine, backend = dn.status()
 pprint('Starting Test == Backend: {}, Engine: {}, Cluster: {}, Pool: {}, Out: {}'
@@ -215,6 +224,9 @@ for i, DS in enumerate(DATA_SIZE):
                         dout[i, j, 0, k] = t.time
                         dout[i, j, 1, k] = t1
                         dout[i, j, 2, k] = t2
+
+                with MpiTimer('Data removed') as t:
+                    ds.delete()
 
     f.close()
 hout.close()

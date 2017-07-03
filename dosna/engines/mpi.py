@@ -131,6 +131,7 @@ class MpiDataset(CpuDataset, MpiMixin):
         self.mpi_barrier()
 
     def delete(self):
+        self.mpi_barrier()
         if self.mpi_is_root:
             self.instance._pool.del_dataset(self.name)
         self.mpi_barrier()
