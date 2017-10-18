@@ -15,9 +15,14 @@ class CephCluster(BaseCluster):
     A Ceph Cluster that wraps LibRados.Cluster
     """
 
-    def __init__(self, name, conffile='ceph.conf', timeout=5, **kwargs):
+    def __init__(self, name, conffile='ceph.conf', timeout=5,
+                 client_id=None, **kwargs):
         super(CephCluster, self).__init__(name, **kwargs)
-        self._cluster = rados.Rados(conffile=conffile)
+        rados_options = {"conffile" : conffile}
+        if client_id is not None:
+            client_name = "client.{}".format(client_id)
+            rados_options["name"] = client_name
+        self._cluster = rados.Rados(**rados_options)
         self._timeout = timeout
 
     def connect(self):
