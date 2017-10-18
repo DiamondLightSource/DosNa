@@ -28,16 +28,19 @@ parser.add_argument('--engine', dest='engine', default='mpi',
                     help='Select engine to use (cpu | joblib | *mpi)')
 parser.add_argument('--cluster', dest='cluster', default='/tmp',
                     help='Configuration file or directory for Cluster')
+parser.add_argument('--cluster-options', dest='cluster_options', nargs='+',
+                    default=[], help='Cluster options using the format: '
+                                     'key1=val1 [key2=val2...]')
 parser.add_argument('--pool', dest='pool', default='test_dosna',
                     help='Existing pool name in the selected backend')
 parser.add_argument('--out', dest='out', default='.',
                     help='Output directory for the results (default ".").')
 
-parser.add_argument('--data_sizes', dest='data_sizes', type=int, nargs='+',
+parser.add_argument('--data-sizes', dest='data_sizes', type=int, nargs='+',
                     default=[128, 256, 512],
                     help='List of sizes for datasets to test in. '
                     'Sizes are 3D, e.g. 128 -> 128x128x128')
-parser.add_argument('--chunk_sizes', dest='chunk_sizes', type=int, nargs='+',
+parser.add_argument('--chunk-sizes', dest='chunk_sizes', type=int, nargs='+',
                     default=[24, 36, 48, 60, 72, 96, 128],
                     help='List of sizes for chunking the datasets. '
                     'Sizes are 3D, e.g. 32 -> 32x32x32')
@@ -62,13 +65,14 @@ dn.use(backend=args.backend, engine=args.engine)
 NTESTS = args.ntest
 SIGMA = args.sigma
 TRUNC = 3
-CLUSTERCFG = args.cluster
+CLUSTER_CONFIG = {"name": args.cluster}
+CLUSTER_CONFIG.update(dict(item.split('=') for item in args.cluster_options))
 POOL = args.pool
 OUT_PATH = args.out
 
 engine, backend = dn.status()
 pprint('Starting Test == Backend: {}, Engine: {}, Cluster: {}, Pool: {}, Out: {}'
-       .format(backend.name, engine.name, CLUSTERCFG, POOL, OUT_PATH), rank=0)
+       .format(backend.name, engine.name, CLUSTER_CONFIG, POOL, OUT_PATH), rank=0)
 
 
 ###############################################################################
@@ -222,7 +226,7 @@ for i, DS in enumerate(DATA_SIZE):
     f, data = create_random_dataset(DS)
 
     for j, CS in enumerate(CHUNK_SIZE):
-        with dn.Cluster(CLUSTERCFG) as C:
+        with dn.Cluster(**CLUSTER_CONFIG) as C:
             if backend.name in ['ram', 'hdf5'] and not C.has_pool(POOL):
                 C.create_pool(POOL)
             with C[POOL] as P:
