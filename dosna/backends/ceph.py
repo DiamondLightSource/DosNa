@@ -170,6 +170,10 @@ class CephDataset(BaseDataset):
         if self.has_chunk(idx):
             self._ioctx.remove_object(self._idx2name(idx))
 
+    def clear(self):
+        for idx in self._ndindex(self.chunks):
+            self.del_chunk(idx)
+
 
 class CephDataChunk(BaseDataChunk):
 
