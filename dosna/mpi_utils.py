@@ -1,8 +1,6 @@
 
 
 from __future__ import with_statement, print_function
-import sys
-import inspect
 
 import time
 from math import ceil, log10
