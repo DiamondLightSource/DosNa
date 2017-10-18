@@ -2,12 +2,11 @@
 
 import numpy as np
 
-from builtins import range
-
 from .. import Engine
 from ..base import Wrapper
 from ..backends import get_backend
 
+from six.moves import range
 
 class CpuCluster(Wrapper):
 

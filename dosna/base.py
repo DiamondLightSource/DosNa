@@ -1,9 +1,10 @@
 
 
-import numpy as np
-from itertools import product
 from collections import namedtuple
+from itertools import product
 
+import numpy as np
+from six.moves import range
 
 # Currently there is no need for more fancy attributes
 Backend = namedtuple('Backend', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk'])

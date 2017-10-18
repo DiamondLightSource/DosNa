@@ -2,9 +2,8 @@
 
 import logging as log
 
-from builtins import range
-
 from mpi4py import MPI
+from six.moves import range
 
 from .. import Engine
 from ..base import Wrapper

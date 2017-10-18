@@ -3,16 +3,15 @@
 import logging as log
 import numpy as np
 
-from builtins import range
-
 import tempfile
 from joblib import Parallel, delayed, dump, load
 
 from .. import Engine
 from ..base import Wrapper
 from ..backends import get_backend
-
 from .cpu import CpuDataset
+
+from six.moves import range
 
 
 class JoblibCluster(Wrapper):
