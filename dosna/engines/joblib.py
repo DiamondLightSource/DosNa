@@ -16,14 +16,15 @@ from six.moves import range
 
 class JoblibCluster(Wrapper):
 
-    def __init__(self, *args, njobs=None, jlbackend=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         bname = kwargs.pop('backend', None)
         backend = get_backend(bname)
         instance = backend.Cluster(*args, **kwargs)
 
         super(JoblibCluster, self).__init__(instance)
-        self.njobs = njobs or __engine__.params['njobs']
-        self.jlbackend = jlbackend or __engine__.params['backend']
+        self.njobs = kwargs.pop('njobs', None) or __engine__.params['njobs']
+        self.jlbackend = kwargs.pop('jlbackend', None) \
+                         or __engine__.params['backend']
 
         if backend.name == 'memory' and __engine__.params['backend'] == 'multiprocessing':
             log.warning('Joblib engine will work unexpectedly with Memory backend')

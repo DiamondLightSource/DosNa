@@ -141,9 +141,9 @@ class H5Pool(BasePool):
 
 class H5Dataset(BaseDataset):
 
-    def __init__(self, *args, subchunks=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(H5Dataset, self).__init__(*args, **kwargs)
-        self._subchunks = subchunks
+        self._subchunks = kwargs.pop('subchunks', None)
 
     def _idx2name(self, idx):
         if not all([type(i) == int for i in idx]) or len(idx) != self.ndim:
