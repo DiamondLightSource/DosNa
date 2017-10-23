@@ -1,0 +1,11 @@
+language: python
+python:
+  - 2.7
+  - 3.3
+install:
+  - pip install -r requirements.txt
+  - pip install -e .
+script:
+  - python tests/test_cluster.py
+  - python tests/test_pool.py
+  - python tests/test_dataset.py
