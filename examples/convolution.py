@@ -52,6 +52,10 @@ parser.add_argument('--sigma', dest='sigma', type=float, default=1.5,
 parser.add_argument('--ntest', dest='ntest', type=int, default=10,
                     help='Number of tests to be run for each data size '
                     'and chunk size')
+parser.add_argument('--tmp', dest='tmp', type=str, default=None,
+                    help='Temporary directory to store the initial dataset, '
+                         'make sure it is visible to every process if you are '
+                         'using mpi')
 
 args = parser.parse_args()
 
@@ -69,6 +73,7 @@ CLUSTER_CONFIG = {"name": args.cluster}
 CLUSTER_CONFIG.update(dict(item.split('=') for item in args.cluster_options))
 POOL = args.pool
 OUT_PATH = args.out
+TMP=args.tmp
 
 engine, backend = dn.status()
 pprint('Starting Test == Backend: {}, Engine: {}, Cluster: {}, Pool: {}, Out: {}'
@@ -82,7 +87,7 @@ def create_random_dataset(DS):
     pprint('Populating random data on disk', rank=0)
 
     if mpi_root():
-        f = tempfile.NamedTemporaryFile()
+        f = tempfile.NamedTemporaryFile(dir=TMP)
         data = np.random.rand(DS, DS, DS).astype(np.float32)
         fname = f.name + '.h5'
         with h5.File(fname, 'w') as g:
