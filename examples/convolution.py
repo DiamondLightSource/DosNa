@@ -26,8 +26,8 @@ parser.add_argument('--backend', dest='backend', default='hdf5',
                     help='Select backend to use (ram | *hdf5 | ceph)')
 parser.add_argument('--engine', dest='engine', default='mpi',
                     help='Select engine to use (cpu | joblib | *mpi)')
-parser.add_argument('--cluster', dest='cluster', default='/tmp',
-                    help='Configuration file or directory for Cluster')
+parser.add_argument('--cluster', dest='cluster', default='test-cluster',
+                    help='Cluster name')
 parser.add_argument('--cluster-options', dest='cluster_options', nargs='+',
                     default=[], help='Cluster options using the format: '
                                      'key1=val1 [key2=val2...]')

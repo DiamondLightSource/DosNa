@@ -110,9 +110,8 @@ if __name__ == "__main__":
                         help='Select backend (ram | hdf5 | ceph)')
     parser.add_argument('--engine', dest='engine', default='cpu',
                         help='Select engine (cpu | joblib | mpi)')
-    parser.add_argument('--cluster', dest='cluster', default=None,
-                        help='Cluster config directory or file '
-                        '(backend dependant)')
+    parser.add_argument('--cluster', dest='cluster', default='test-cluster',
+                        help='Cluster name')
     parser.add_argument('--cluster-options', dest='cluster_options', nargs='+',
                         default=[], help='Cluster options using the format: '
                                          'key1=val1 [key2=val2...]')

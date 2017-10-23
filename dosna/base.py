@@ -36,8 +36,13 @@ class Wrapper(object):
 
 class BaseCluster(object):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
+        self._name = name
         self._connected = False
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def connected(self):
@@ -87,6 +92,10 @@ class BasePool(object):
         self._name = name
         self._mode = open_mode
         self._isopen = False
+
+    @property
+    def cluster(self):
+        return self._cluster
 
     @property
     def name(self):
@@ -151,6 +160,10 @@ class BaseDataset(object):
         self._chunk_size = csize
         self._total_chunks = np.prod(chunks)
         self._ndim = len(self._shape)
+
+    @property
+    def pool(self):
+        return self._pool
 
     @property
     def name(self):
@@ -373,6 +386,10 @@ class BaseDataChunk(object):
         self._size = np.prod(shape)
         self._dtype = dtype
         self._fillvalue = fillvalue
+
+    @property
+    def dataset(self):
+        return self._dataset
 
     @property
     def name(self):

@@ -12,7 +12,7 @@ class MemCluster(BaseCluster):
     A Memory Cluster represents a dictionary.
     """
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(MemCluster, self).__init__(*args, **kwargs)
         self.pools = {}
 

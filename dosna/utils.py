@@ -1,5 +1,6 @@
 
-
+from os.path import realpath
+from os.path import join
 import time
 import numpy as np
 
@@ -30,3 +31,16 @@ class Timer(object):
         self.tend = time.time()
         self.time = self.tend - self.tstart
         print('[*] %s -- Elapsed: %.4f seconds' % (self.name, self.time))
+
+
+class DirectoryTreeMixin:
+
+    @property
+    def path(self):
+        if getattr(self, "directory", False):
+            return join(self.directory, self.name)
+        return self.parent.relpath(self.name)
+
+    def relpath(self, name=''):
+        return join(self.path, name)
+
