@@ -1,11 +1,21 @@
 language: python
+
 python:
   - 2.7
   - 3.3
+
+addons:
+  apt:
+    packages:
+      - libhdf5-serial-dev
+
 install:
   - pip install -r requirements.txt
   - pip install -e .
+
+env:
+  - ENGINE=cpu BACKEND=ram
+  - ENGINE=cpu BACKEND=hdf5
+
 script:
-  - python tests/test_cluster.py
-  - python tests/test_pool.py
-  - python tests/test_dataset.py
+  - ./run_tests.sh --engine $ENGINE --backend $BACKEND
