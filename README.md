@@ -1,5 +1,7 @@
 # Distributed Object-Store Numpy Array (DosNa)
 
+[![Build Status](https://travis-ci.org/DiamondLightSource/DosNa.svg?branch=master)](https://travis-ci.org/DiamondLightSource/DosNa)
+
 DosNa is intended to be a python wrapper to distribute N-dimensional arrays over an Object Store server. The main goal of DosNa is to provide easy and friendly seamless interface to store and manage N-Dimensional datasets over a remote Cloud.
 
 It is designed to be modular by defining a `Cluster -> Pool -> Dataset -> DataChunk` architecture, and supports multiple **Backends** and **Engines** that extend the base abstract model to add different functionality. Each Backend represents a different Object Store type and wraps DosNa to connect and interact with such Object Store. Engines, on the other hand, add different local (or remote) multi-threading and multi-process support. Engines act as clients to the selected Backend and parallelize (or enhance) some of the functions to access the remote data.
