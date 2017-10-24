@@ -1,21 +1,40 @@
+sudo: required
+dist: trusty
 language: python
 
-python:
-  - 2.7
-  - 3.3
+services:
+  - docker
 
 addons:
   apt:
     packages:
       - libhdf5-serial-dev
+      - ceph-common
+      - librados-dev
+
+python:
+  - 2.7
+  - 3.3
+
+env:
+  global:
+    - ENGINE=cpu
+  matrix:
+    - BACKEND=ram
+    - BACKEND=hdf5
+    - BACKEND=ceph
+
+matrix:
+  exclude:
+    - python: 3.3
+      env: BACKEND=ceph
 
 install:
   - pip install -r requirements.txt
   - pip install -e .
 
-env:
-  - ENGINE=cpu BACKEND=ram
-  - ENGINE=cpu BACKEND=hdf5
+before_script:
+  - sudo ./common/start-ceph-in-docker.sh
 
 script:
   - ./run_tests.sh --engine $ENGINE --backend $BACKEND
