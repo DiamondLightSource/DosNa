@@ -94,7 +94,7 @@ class H5Pool(BasePool, DirectoryTreeMixin):
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception('Provide `shape` and `dtype` or `data`')
         if self.has_dataset(name):
-            raise Exception('Dataset at `%s` already exists' % self.relname(name))
+            raise Exception('Dataset at `%s` already exists' % self.relpath(name))
 
         if data is not None:
             shape = data.shape
