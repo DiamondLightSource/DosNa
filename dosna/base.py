@@ -21,7 +21,7 @@ class Wrapper(object):
 
     def __getattr__(self, attr):
         """
-        Attributes/Fundtions that do not exist in the extended class
+        Attributes/Functions that do not exist in the extended class
         are going to be passed to the instance being wrapped
         """
         return self.instance.__getattribute__(attr)
