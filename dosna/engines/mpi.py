@@ -121,7 +121,7 @@ class MpiDataset(CpuDataset, MpiMixin):
 
     def get_chunk(self, *args, **kwargs):
         chunk = self.instance.get_chunk(*args, **kwargs)
-        return MpiDataChunk(chunk)
+        return MpiDataChunk(chunk, self)
 
     def clear(self):
         for idx in range(self.mpi_rank, self.total_chunks, self.mpi_size):
@@ -132,7 +132,7 @@ class MpiDataset(CpuDataset, MpiMixin):
     def delete(self):
         self.mpi_barrier()
         if self.mpi_is_root:
-            self.instance._pool.del_dataset(self.name)
+            self.instance.pool.del_dataset(self.name)
         self.mpi_barrier()
 
     def load(self, data):
@@ -164,7 +164,7 @@ class MpiDataset(CpuDataset, MpiMixin):
 
     def clone(self, output_name):
         if self.mpi_is_root:
-            out = self.instance._pool.create_dataset(
+            out = self.instance.pool.create_dataset(
                 output_name, shape=self.shape,
                 dtype=self.dtype, chunks=self.chunk_size,
                 fillvalue=self.fillvalue)

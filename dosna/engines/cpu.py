@@ -94,7 +94,7 @@ class CpuDataset(Wrapper):
             self.del_chunk(idx)
 
     def delete(self):
-        self.instance._pool.del_dataset(self.name)
+        self.instance.pool.del_dataset(self.name)
 
     def load(self, data):
         if data.shape != self.shape:
@@ -120,7 +120,7 @@ class CpuDataset(Wrapper):
             self.set_chunk_data(idx, data)
 
     def clone(self, output_name):
-        out = self.instance._pool.create_dataset(
+        out = self.instance.pool.create_dataset(
             output_name, shape=self.shape,
             dtype=self.dtype, chunks=self.chunk_size,
             fillvalue=self.fillvalue)
