@@ -168,9 +168,8 @@ class MpiDataset(CpuDataset, MpiMixin):
                 output_name, shape=self.shape,
                 dtype=self.dtype, chunks=self.chunk_size,
                 fillvalue=self.fillvalue)
-        else:
-            out = None
-        out = self.mpi_comm.bcast(out, root=0)
+        self.mpi_barrier()
+        out = self.instance.pool.get_dataset(output_name)
         return MpiDataset(out, self.mpi_comm)
 
 
