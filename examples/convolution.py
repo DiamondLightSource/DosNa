@@ -2,8 +2,6 @@
 
 from __future__ import print_function
 
-
-import sys
 from os.path import join
 import numpy as np
 import h5py as h5
@@ -106,27 +104,25 @@ def create_random_dataset(DS):
 # Output Dataset
 
 def get_output_dataset():
+    # only one node should create results
     dname = '{}/{}'.format(backend.name, mpi_size())
     fname = join(OUT_PATH, 'result.h5')
-    if mpi_root():
-        shape = (len(DATA_SIZE), len(CHUNK_SIZE), 3, NTESTS)
+    shape = (len(DATA_SIZE), len(CHUNK_SIZE), 3, NTESTS)
 
-        with h5.File(fname, 'a') as g:
-            if dname in g:
-                if g[dname].shape != shape:
-                    raise ValueError('Dataset exists with invalid shape')
-            else:
-                g.create_dataset(dname, shape=shape, dtype=np.float32)
-                g[dname].attrs['axis0_label'] = 'Data Size'
-                g[dname].attrs['axis1_label'] = 'Chunk Size'
-                g[dname].attrs['axis2_label'] = 'Tests'
-                g[dname].attrs['axis3_label'] = '# Tests'
-                g[dname].attrs['axis0_value'] = DATA_SIZE
-                g[dname].attrs['axis1_value'] = CHUNK_SIZE
-                g[dname].attrs['axis2_value'] = np.array(['DATA', '3D', '1D'], dtype='S4')
-                g[dname].attrs['axis3_value'] = list(range(NTESTS))
-
-    mpi_barrier()
+    with h5.File(fname, 'a') as g:
+        if dname in g:
+            if g[dname].shape != shape:
+                raise ValueError('Dataset exists with invalid shape')
+        else:
+            g.create_dataset(dname, shape=shape, dtype=np.float32)
+            g[dname].attrs['axis0_label'] = 'Data Size'
+            g[dname].attrs['axis1_label'] = 'Chunk Size'
+            g[dname].attrs['axis2_label'] = 'Tests'
+            g[dname].attrs['axis3_label'] = '# Tests'
+            g[dname].attrs['axis0_value'] = DATA_SIZE
+            g[dname].attrs['axis1_value'] = CHUNK_SIZE
+            g[dname].attrs['axis2_value'] = np.array(['DATA', '3D', '1D'], dtype='S4')
+            g[dname].attrs['axis3_value'] = list(range(NTESTS))
 
     h5out = h5.File(fname, 'a')
     h5result = h5out[dname]
@@ -223,8 +219,8 @@ def convolve2(ds, sigma):
 
 ###############################################################################
 # Start tests!
-
-hout, dout = get_output_dataset()
+if mpi_root():
+    hout, dout = get_output_dataset()
 
 for i, DS in enumerate(DATA_SIZE):
 
@@ -253,4 +249,5 @@ for i, DS in enumerate(DATA_SIZE):
                     ds.delete()
 
     f.close()
-hout.close()
+if mpi_root():
+    hout.close()
