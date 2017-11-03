@@ -1,62 +1,20 @@
+#!/usr/bin/env python
 
-
+import logging
 import numpy as np
-import logging as log
 
-from .. import Backend
-from ..base import BaseCluster, BasePool, BaseDataset, BaseDataChunk
+from dosna import Backend
+from dosna.base import BaseConnection, BaseDataset, BaseDataChunk
 
+log = logging.getLogger(__name__)
 
-class MemCluster(BaseCluster):
+class MemConnection(BaseConnection):
     """
-    A Memory Cluster represents a dictionary.
+    A Memory Connection represents a dictionary.
     """
 
     def __init__(self, *args, **kwargs):
-        super(MemCluster, self).__init__(*args, **kwargs)
-        self.pools = {}
-
-    def connect(self):
-        super(MemCluster, self).connect()
-        log.debug('Starting Memory Cluster')
-
-    def disconnect(self):
-        super(MemCluster, self).disconnect()
-        log.debug('Stopping Memory Cluster')
-
-    def create_pool(self, name, open_mode='a'):
-        if self.has_pool(name):
-            raise Exception('Path `%s` already exists' % name)
-
-        log.debug('Creating pool `%s`' % name)
-        self.pools[name] = None  # Key `name` has to exist
-        pool = MemPool(self, name, open_mode=open_mode)
-        self.pools[name] = pool
-        return pool
-
-    def get_pool(self, name, open_mode='a'):
-        if self.has_pool(name):
-            return self.pools[name]
-        raise Exception('Pool `%s` does not exist' % name)
-
-    def has_pool(self, name):
-        return name in self.pools
-
-    def del_pool(self, name):
-        if self.has_pool(name):
-            log.debug('Removing pool `%s`' % name)
-            del self.pools[name]
-        else:
-            raise Exception('Pool `%s` does not exist' % name)
-
-
-class MemPool(BasePool):
-    """
-    An Mem Pool represents a dictionary.
-    """
-
-    def __init__(self, cluster, name, open_mode='a'):
-        super(MemPool, self).__init__(cluster, name, open_mode=open_mode)
+        super(MemConnection, self).__init__(*args, **kwargs)
         self.datasets = {}
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
@@ -77,7 +35,7 @@ class MemPool(BasePool):
             csize = chunks
         chunks_needed = (np.ceil(np.asarray(shape, float) / csize)).astype(int)
 
-        log.debug('Creating Dataset `%s`' % name)
+        log.debug('Creating Dataset `%s`', name)
         self.datasets[name] = None  # Key `name` has to exist
         dataset = MemDataset(self, name, shape, dtype, fillvalue,
                              chunks_needed, csize)
@@ -95,7 +53,7 @@ class MemPool(BasePool):
     def del_dataset(self, name):
         if not self.has_dataset(name):
             raise Exception('Dataset `%s` does not exist' % name)
-        log.debug('Removing Dataset `%s`' % name)
+        log.debug('Removing Dataset `%s`', name)
         del self.datasets[name]
 
 
@@ -153,4 +111,4 @@ class MemDataChunk(BaseDataChunk):
         self.data[slices] = values
 
 
-__backend__ = Backend('ram', MemCluster, MemPool, MemDataset, MemDataChunk)
+__backend__ = Backend('ram', MemConnection, MemDataset, MemDataChunk)
