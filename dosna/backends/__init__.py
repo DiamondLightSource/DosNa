@@ -1,8 +1,9 @@
 
 
-import logging as log
+import logging
 from importlib import import_module
 
+log = logging.getLogger(__name__)
 
 __current = None
 available = ['ram', 'hdf5', 'ceph']

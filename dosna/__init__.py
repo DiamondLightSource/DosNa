@@ -9,7 +9,7 @@ from .backends import use_backend, get_backend
 from .engines import use_engine, get_engine
 
 
-Cluster = Pool = Dataset = DataChunk = None
+Connection = Dataset = DataChunk = None
 
 
 def use(engine=None, backend=None, engine_kw={}):
@@ -18,8 +18,8 @@ def use(engine=None, backend=None, engine_kw={}):
     if engine is not None:
         use_engine(engine, **engine_kw)
 
-    global __current, Cluster, Pool, Dataset, DataChunk
-    _, Cluster, Pool, Dataset, DataChunk, _ = __current = get_engine()
+    global __current, Connection, Dataset, DataChunk
+    _, Connection, Dataset, DataChunk, _ = __current = get_engine()
 
 
 def compatible(engine, backend):

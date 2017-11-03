@@ -2,14 +2,17 @@
 
 from collections import namedtuple
 from itertools import product
+import logging
 
 import numpy as np
 from six.moves import range
 
-# Currently there is no need for more fancy attributes
-Backend = namedtuple('Backend', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk'])
+log = logging.getLogger(__name__)
 
-Engine = namedtuple('Engine', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk', 'params'])
+# Currently there is no need for more fancy attributes
+Backend = namedtuple('Backend', ['name', 'Connection', 'Dataset', 'DataChunk'])
+
+Engine = namedtuple('Engine', ['name', 'Connection', 'Dataset', 'DataChunk', 'params'])
 
 
 class Wrapper(object):
@@ -34,11 +37,12 @@ class Wrapper(object):
         self.instance.__exit__(*args)
 
 
-class BaseCluster(object):
+class BaseConnection(object):
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name, open_mode="a", *args, **kwargs):
         self._name = name
         self._connected = False
+        self._mode = open_mode
 
     @property
     def name(self):
@@ -48,10 +52,16 @@ class BaseCluster(object):
     def connected(self):
         return self._connected
 
+    @property
+    def mode(self):
+        return self._mode
+
     def connect(self):
+        log.debug("Connecting to %s", self.name)
         self._connected = True
 
     def disconnect(self):
+        log.debug("Disconnecting from %s", self.name)
         self._connected = False
 
     def __enter__(self):
@@ -63,66 +73,11 @@ class BaseCluster(object):
         if self.connected:
             self.disconnect()
 
-    def create_pool(self, name, open_mode='a'):
-        raise NotImplementedError('`create_pool` not implemented for this backend')
-
-    def get_pool(self, name, open_mode='a'):
-        raise NotImplementedError('`get_pool` not implemented for this backend')
-
-    def has_pool(self, name):
-        raise NotImplementedError('`has_pool` not implemented for this backend')
-
-    def del_pool(self, name):
-        raise NotImplementedError('`delete_pool` not implemented for this backend')
-
     def __getitem__(self, name):
-        return self.get_pool(name)
+        return self.get_dataset(name)
 
     def __contains__(self, name):
-        return self.has_pool(name)
-
-
-class BasePool(object):
-
-    def __init__(self, cluster, name, open_mode='a'):
-        if not cluster.has_pool(name):
-            raise Exception('Wrong initialization of a Pool')
-
-        self._cluster = cluster
-        self._name = name
-        self._mode = open_mode
-        self._isopen = False
-
-    @property
-    def cluster(self):
-        return self._cluster
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def isopen(self):
-        return self._isopen
-
-    @property
-    def mode(self):
-        return self._mode
-
-    def open(self):
-        self._isopen = True
-
-    def close(self):
-        self._isopen = False
-
-    def __enter__(self):
-        if not self.isopen:
-            self.open()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.isopen:
-            self.close()
+        return self.has_dataset(name)
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunks=None):
@@ -137,20 +92,14 @@ class BasePool(object):
     def del_dataset(self, name):
         raise NotImplementedError('`del_dataset` not implemented for this backend')
 
-    def __getitem__(self, name):
-        return self.get_dataset(name)
-
-    def __contains__(self, name):
-        return self.has_dataset(name)
-
 
 class BaseDataset(object):
 
-    def __init__(self, pool, name, shape, dtype, fillvalue, chunks, csize):
-        if not pool.has_dataset(name):
+    def __init__(self, connection, name, shape, dtype, fillvalue, chunks, csize):
+        if not connection.has_dataset(name):
             raise Exception('Wrong initialization of a Dataset')
 
-        self._pool = pool
+        self._connection = connection
         self._name = name
         self._shape = shape
         self._dtype = dtype
@@ -162,8 +111,9 @@ class BaseDataset(object):
         self._ndim = len(self._shape)
 
     @property
-    def pool(self):
-        return self._pool
+    def connection(self):
+        return self._connection
+
 
     @property
     def name(self):
