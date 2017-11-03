@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 
 import sys
 import unittest
@@ -8,7 +8,7 @@ import numpy as np
 import dosna as dn
 
 logging.basicConfig(level=logging.DEBUG, format="LOG: %(message)s")
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 log.level = logging.INFO
 
 
@@ -26,29 +26,21 @@ class DatasetTest(unittest.TestCase):
                  .format(self.BACKEND, self.ENGINE, self.CLUSTER_CONFIG))
 
         dn.use(backend=self.BACKEND, engine=self.ENGINE)
-        self.C = dn.Cluster(**self.CLUSTER_CONFIG)
+        self.C = dn.Connection(**self.CLUSTER_CONFIG)
         self.C.connect()
-        if self.BACKEND != 'ceph' and not self.C.has_pool(self.POOL):
-            # Create pool for 'ram' and 'hdf5' backends
-            self.C.create_pool(self.POOL)
-        self.pool = self.C[self.POOL]
-        self.pool.open()
         self.fakeds = 'NotADataset'
         self.data = np.random.rand(100, 100, 100)
-        self.ds = self.pool.create_dataset(
+        self.ds = self.C.create_dataset(
             self.fakeds, data=self.data, chunks=(32, 32, 32))
 
     def tearDown(self):
         log.removeHandler(self.handler)
-        if self.BACKEND != 'ceph':  # Avoid creating pools in ceph
-            self.C.del_pool(self.POOL)
-        if self.pool.has_dataset(self.fakeds):
-            self.pool.del_dataset(self.fakeds)
-        self.pool.close()
+        if self.C.has_dataset(self.fakeds):
+            self.C.del_dataset(self.fakeds)
         self.C.disconnect()
 
     def test_existing(self):
-        self.assertTrue(self.pool.has_dataset(self.fakeds))
+        self.assertTrue(self.C.has_dataset(self.fakeds))
 
     def test_number_chunks(self):
         self.assertSequenceEqual(list(self.ds.chunks), [4, 4, 4])
@@ -96,7 +88,7 @@ class DatasetTest(unittest.TestCase):
     def test_map(self):
         ds2 = self.ds.map(lambda x: x + 1, self.fakeds + '2')
         np.testing.assert_array_equal(ds2[...], self.ds[...] + 1)
-        self.pool.del_dataset(ds2.name)
+        self.C.del_dataset(ds2.name)
 
     def test_apply(self):
         self.ds.apply(lambda x: x + 1)
