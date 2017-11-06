@@ -1,12 +1,17 @@
 #!/usr/bin/env python
+"""
+backend RAM keeps every data structure in memory
+"""
 
 import logging
+
 import numpy as np
 
 from dosna import Backend
-from dosna.base import BaseConnection, BaseDataset, BaseDataChunk
+from dosna.base import BaseConnection, BaseDataChunk, BaseDataset
 
 log = logging.getLogger(__name__)
+
 
 class MemConnection(BaseConnection):
     """

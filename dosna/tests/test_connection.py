@@ -5,48 +5,48 @@ import sys
 import unittest
 
 import dosna as dn
+from dosna.tests import configure_logger
 
-logging.basicConfig(level=logging.DEBUG, format="LOG: %(message)s")
-log = logging.getLogger()
-log.level = logging.INFO
+log = logging.getLogger(__name__)
 
 
 class ConnectionTest(unittest.TestCase):
+    """
+    Test connection handle
+    """
 
     BACKEND = 'ram'
     ENGINE = 'cpu'
     CLUSTER_CONFIG = {}
 
     def setUp(self):
-        self.handler = logging.StreamHandler(sys.stdout)
-        log.addHandler(self.handler)
-        log.info('ClusterTest: {}, {}, {}'
-                 .format(self.BACKEND, self.ENGINE, self.CLUSTER_CONFIG))
+        log.info('ClusterTest: %s, %s, %s',
+                 self.BACKEND, self.ENGINE, self.CLUSTER_CONFIG)
 
         dn.use(backend=self.BACKEND, engine=self.ENGINE)
-        self.C = dn.Connection(**self.CLUSTER_CONFIG)
+        self.connection_handle = dn.Connection(**self.CLUSTER_CONFIG)
 
     def tearDown(self):
-        log.removeHandler(self.handler)
-        self.C.disconnect()
+        self.connection_handle.disconnect()
 
     def test_config(self):
         self.assertIn(self.BACKEND, dn.backends.available)
         self.assertIn(self.ENGINE, dn.engines.available)
 
     def test_connection(self):
-        c = dn.Connection(**self.CLUSTER_CONFIG)
-        self.assertIsNotNone(c)
-        self.assertFalse(c.connected)
-        c.connect()
-        self.assertTrue(c.connected)
-        c.disconnect()
-        self.assertFalse(c.connected)
+        connection_handle = dn.Connection(**self.CLUSTER_CONFIG)
+        self.assertIsNotNone(connection_handle)
+        self.assertFalse(connection_handle.connected)
+        connection_handle.connect()
+        self.assertTrue(connection_handle.connected)
+        connection_handle.disconnect()
+        self.assertFalse(connection_handle.connected)
 
 
-if __name__ == "__main__":
+def main():
+    configure_logger(log)
     import argparse
-    parser = argparse.ArgumentParser(description='TestCluster')
+    parser = argparse.ArgumentParser(description='TestConnection')
     parser.add_argument('--backend', dest='backend', default='ram',
                         help='Select backend (ram | hdf5 | ceph)')
     parser.add_argument('--engine', dest='engine', default='cpu',
@@ -58,13 +58,16 @@ if __name__ == "__main__":
                         default=[], help='Cluster options using the format: '
                                          'key1=val1 [key2=val2...]')
 
-    args, unknownargs = parser.parse_known_args()
-    sys.argv = [sys.argv[0]] + unknownargs
+    args, unknown_args = parser.parse_known_args()
+    sys.argv = [sys.argv[0]] + unknown_args
 
     ConnectionTest.BACKEND = args.backend
     ConnectionTest.ENGINE = args.engine
     ConnectionTest.CLUSTER_CONFIG["name"] = args.connection
     ConnectionTest.CLUSTER_CONFIG.update(
         dict(item.split('=') for item in args.cluster_options))
-
     unittest.main(verbosity=2)
+
+
+if __name__ == "__main__":
+    main()

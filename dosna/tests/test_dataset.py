@@ -4,15 +4,18 @@ import logging as logging
 import sys
 import unittest
 
-import dosna as dn
 import numpy as np
 
-logging.basicConfig(level=logging.DEBUG, format="LOG: %(message)s")
+import dosna as dn
+from dosna.tests import configure_logger
+
 log = logging.getLogger(__name__)
-log.level = logging.INFO
 
 
 class DatasetTest(unittest.TestCase):
+    """
+    Test dataset actions
+    """
 
     BACKEND = 'ram'
     ENGINE = 'cpu'
@@ -21,29 +24,30 @@ class DatasetTest(unittest.TestCase):
     def setUp(self):
         self.handler = logging.StreamHandler(sys.stdout)
         log.addHandler(self.handler)
-        log.info('DatasetTest: {}, {}, {}'
-                 .format(self.BACKEND, self.ENGINE, self.CLUSTER_CONFIG))
+        log.info('DatasetTest: %s, %s, %s',
+                 self.BACKEND, self.ENGINE, self.CLUSTER_CONFIG)
 
         dn.use(backend=self.BACKEND, engine=self.ENGINE)
-        self.C = dn.Connection(**self.CLUSTER_CONFIG)
-        self.C.connect()
-        self.fakeds = 'NotADataset'
+        self.connection_handle = dn.Connection(**self.CLUSTER_CONFIG)
+        self.connection_handle.connect()
+        self.fake_dataset = 'NotADataset'
         self.data = np.random.rand(100, 100, 100)
-        self.ds = self.C.create_dataset(
-            self.fakeds, data=self.data, chunks=(32, 32, 32))
+        self.dataset = self.connection_handle.create_dataset(
+            self.fake_dataset, data=self.data, chunks=(32, 32, 32))
 
     def tearDown(self):
         log.removeHandler(self.handler)
-        if self.C.has_dataset(self.fakeds):
-            self.C.del_dataset(self.fakeds)
-        self.C.disconnect()
+        if self.connection_handle.has_dataset(self.fake_dataset):
+            self.connection_handle.del_dataset(self.fake_dataset)
+        self.connection_handle.disconnect()
 
     def test_existing(self):
-        self.assertTrue(self.C.has_dataset(self.fakeds))
-        self.assertFalse(self.C.has_dataset('NonExistantDataset'))
+        self.assertTrue(self.connection_handle.has_dataset(self.fake_dataset))
+        self.assertFalse(self.connection_handle.has_dataset(
+            'NonExistantDataset'))
 
     def test_number_chunks(self):
-        self.assertSequenceEqual(list(self.ds.chunks), [4, 4, 4])
+        self.assertSequenceEqual(list(self.dataset.chunks), [4, 4, 4])
 
     def test_number_chunks_slicing(self):
         slices = [
@@ -59,10 +63,11 @@ class DatasetTest(unittest.TestCase):
             [slice(None), 4 * 4 * 4]
         ]
 
-        for sl, expected in slices:
-            sl = self.ds._process_slices(sl)
-            it = self.ds._chunk_slice_iterator(sl, self.ds.ndim)
-            self.assertEqual(len(list(it)), expected)
+        for slice_, expected in slices:
+            slice_ = self.dataset._process_slices(slice_)
+            iterator = self.dataset._chunk_slice_iterator(slice_,
+                                                          self.dataset.ndim)
+            self.assertEqual(len(list(iterator)), expected)
 
     def test_slice_content(self):
         slices = [
@@ -78,24 +83,29 @@ class DatasetTest(unittest.TestCase):
             slice(None)
         ]
 
-        for sl in slices:
-            np.testing.assert_array_equal(self.ds[...], self.data)
+        for slice_ in slices:
+            np.testing.assert_array_equal(self.dataset[slice_],
+                                          self.data[slice_])
+
+        np.testing.assert_array_equal(self.dataset[...], self.data)
 
     def test_dataset_clear(self):
-        self.ds.clear()
-        np.testing.assert_array_equal(self.ds[...], self.ds.fillvalue)
+        self.dataset.clear()
+        np.testing.assert_array_equal(self.dataset[...],
+                                      self.dataset.fillvalue)
 
     def test_map(self):
-        ds2 = self.ds.map(lambda x: x + 1, self.fakeds + '2')
-        np.testing.assert_array_equal(ds2[...], self.ds[...] + 1)
-        self.C.del_dataset(ds2.name)
+        dataset2 = self.dataset.map(lambda x: x + 1, self.fake_dataset + '2')
+        np.testing.assert_array_equal(dataset2[...], self.dataset[...] + 1)
+        self.connection_handle.del_dataset(dataset2.name)
 
     def test_apply(self):
-        self.ds.apply(lambda x: x + 1)
-        np.testing.assert_array_equal(self.ds[...], self.data + 1)
+        self.dataset.apply(lambda x: x + 1)
+        np.testing.assert_array_equal(self.dataset[...], self.data + 1)
 
 
-if __name__ == "__main__":
+def main():
+    configure_logger(log)
     import argparse
     parser = argparse.ArgumentParser(description='TestDataset')
     parser.add_argument('--backend', dest='backend', default='ram',
@@ -109,13 +119,16 @@ if __name__ == "__main__":
                         default=[], help='Cluster options using the format: '
                                          'key1=val1 [key2=val2...]')
 
-    args, unknownargs = parser.parse_known_args()
-    sys.argv = [sys.argv[0]] + unknownargs
+    args, unknown_args = parser.parse_known_args()
+    sys.argv = [sys.argv[0]] + unknown_args
 
     DatasetTest.BACKEND = args.backend
     DatasetTest.ENGINE = args.engine
     DatasetTest.CLUSTER_CONFIG["name"] = args.connection
     DatasetTest.CLUSTER_CONFIG.update(
         dict(item.split('=') for item in args.cluster_options))
-
     unittest.main(verbosity=2)
+
+
+if __name__ == "__main__":
+    main()
