@@ -3,14 +3,14 @@
 if [ "$#" -eq 0 ]; then
     echo "Unittest discovery mode"
     echo "========================================"
-    PYTHONPATH=. python -m unittest discover -s tests -v
+    PYTHONPATH=. python -m unittest discover -s dosna/tests -v
 else
     echo "Unittest manual mode:" $@
-    for script in 'cluster' 'pool' 'dataset';
+    for script in 'connection' 'dataset';
     do
         echo "========================================"
         echo "Running tests on ${script}"
         echo "========================================"
-        PYTHONPATH=. python tests/test_${script}.py $@
+        PYTHONPATH=. python dosna/tests/test_${script}.py $@
     done
 fi
