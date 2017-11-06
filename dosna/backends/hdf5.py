@@ -9,81 +9,35 @@ import h5py as h5
 import numpy as np
 
 from .. import Backend
-from ..base import BaseCluster, BasePool, BaseDataset, BaseDataChunk
+from ..base import BaseConnection, BaseDataset, BaseDataChunk
 from ..utils import DirectoryTreeMixin
 from ..utils import dtype2str
 
 _DATASET_METADATA_FILENAME = 'dataset.h5'
-_POOL_SIGNATURE_FILENAME = '.dosna'
 
 
 def _validate_path(path):
     if len(os.path.splitext(path)[1]) > 0:
-        raise Exception('`%s` is not a valid cluster/pool path' % path)
+        raise Exception('`%s` is not a valid path' % path)
 
 
-class H5Cluster(BaseCluster, DirectoryTreeMixin):
+class H5Connection(BaseConnection, DirectoryTreeMixin):
     """
     A HDF5 Cluster represents the local filesystem.
     """
 
-    def __init__(self, name, directory='/tmp', *args, **kwargs):
-        super(H5Cluster, self).__init__(name, *args, **kwargs)
+    def __init__(self, name, directory='.', *args, **kwargs):
+        super(H5Connection, self).__init__(name, *args, **kwargs)
         self.directory = os.path.realpath(directory)
         _validate_path(self.path)
 
-    def _get_pool_signature_path(self, name):
-        return os.path.join(self.relpath(name), _POOL_SIGNATURE_FILENAME)
-
     def connect(self):
-        super(H5Cluster, self).connect()
-        log.debug('Starting HDF5 Cluster at `%s`' % self.path)
+        super(H5Connection, self).connect()
+        log.debug('Starting HDF5 Connection at `%s`' % self.path)
 
     def disconnect(self):
-        super(H5Cluster, self).disconnect()
-        log.debug('Stopping HDF5 Cluster at `%s`' % self.path)
-
-    def create_pool(self, name, open_mode='a'):
-        path = self.relpath(name)
-        log.debug('Creating pool `%s`' % path)
-
-        if not os.path.exists(path):
-            os.makedirs(path)
-        flag_path = self._get_pool_signature_path(name)
-        with open(flag_path, 'w'):
-            os.utime(flag_path, None)
-        return H5Pool(self, name, open_mode=open_mode)
-
-    def get_pool(self, name, open_mode='a'):
-        if self.has_pool(name):
-            return H5Pool(self, name, open_mode=open_mode)
-        path = self.relpath(name)
-        if os.path.exists(path):
-            raise Exception('Path `%s` is not a pool' % path)
-        raise Exception('Pool `%s` does not exist' % path)
-
-    def has_pool(self, name):
-        return os.path.isdir(self.relpath(name)) \
-               and os.path.isfile(self._get_pool_signature_path(name))
-
-    def del_pool(self, name):
-        path = self.relpath(name)
-        if self.has_pool(name):
-            log.debug('Removing pool at `%s`' % path)
-            shutil.rmtree(path)
-        if os.path.exists(path):
-            raise Exception('Path `%s` is not a valid pool' % path)
-
-
-class H5Pool(BasePool, DirectoryTreeMixin):
-    """
-    An HDF5 Pool represents a subdirectory in the local filesystem with a `.dosna` file.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(H5Pool, self).__init__(*args, **kwargs)
-        self.parent = self.cluster
-        _validate_path(self.path)
+        super(H5Connection, self).disconnect()
+        log.debug('Stopping HDF5 Connection at `%s`' % self.path)
 
     def _get_dataset_metadata_path(self, name):
         return os.path.join(self.relpath(name), _DATASET_METADATA_FILENAME)
@@ -151,7 +105,7 @@ class H5Dataset(BaseDataset, DirectoryTreeMixin):
 
     def __init__(self, *args, **kwargs):
         super(H5Dataset, self).__init__(*args, **kwargs)
-        self.parent = self.pool
+        self.parent = self.connection
         self._subchunks = kwargs.pop('subchunks', None)
 
     def _idx2name(self, idx):
@@ -214,4 +168,4 @@ class H5DataChunk(BaseDataChunk, DirectoryTreeMixin):
             f['data'][slices] = values
 
 
-__backend__ = Backend('hdf5', H5Cluster, H5Pool, H5Dataset, H5DataChunk)
+__backend__ = Backend('hdf5', H5Connection, H5Dataset, H5DataChunk)
