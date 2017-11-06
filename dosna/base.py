@@ -1,10 +1,11 @@
 
 
+import logging
 from collections import namedtuple
 from itertools import product
-import logging
 
 import numpy as np
+
 from six.moves import range
 
 log = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ class BaseDataset(object):
 
     # To be implementd by Storage Backend
 
-    def create_chunk(self, idx, data=None, cslices=None):
+    def create_chunk(self, idx, data=None, slices=None):
         raise NotImplementedError('`create_chunk` not implemented for this backend')
 
     def get_chunk(self, idx):
