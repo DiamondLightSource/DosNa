@@ -19,16 +19,16 @@ class DatasetTest(unittest.TestCase):
 
     BACKEND = 'ram'
     ENGINE = 'cpu'
-    CLUSTER_CONFIG = {}
+    CONNECTION_CONFIG = {}
 
     def setUp(self):
         self.handler = logging.StreamHandler(sys.stdout)
         log.addHandler(self.handler)
         log.info('DatasetTest: %s, %s, %s',
-                 self.BACKEND, self.ENGINE, self.CLUSTER_CONFIG)
+                 self.BACKEND, self.ENGINE, self.CONNECTION_CONFIG)
 
         dn.use(backend=self.BACKEND, engine=self.ENGINE)
-        self.connection_handle = dn.Connection(**self.CLUSTER_CONFIG)
+        self.connection_handle = dn.Connection(**self.CONNECTION_CONFIG)
         self.connection_handle.connect()
         self.fake_dataset = 'NotADataset'
         self.data = np.random.rand(100, 100, 100)
@@ -113,20 +113,21 @@ def main():
     parser.add_argument('--engine', dest='engine', default='cpu',
                         help='Select engine (cpu | joblib | mpi)')
     parser.add_argument('--connection', dest='connection',
-                        default='test-connection',
+                        default='test-dosna',
                         help='Connection name')
-    parser.add_argument('--cluster-options', dest='cluster_options', nargs='+',
-                        default=[], help='Cluster options using the format: '
-                                         'key1=val1 [key2=val2...]')
+    parser.add_argument('--connection-options', dest='connection_options',
+                        nargs='+', default=[],
+                        help='Connection options using the format: '
+                             'key1=val1 [key2=val2...]')
 
     args, unknown_args = parser.parse_known_args()
     sys.argv = [sys.argv[0]] + unknown_args
 
     DatasetTest.BACKEND = args.backend
     DatasetTest.ENGINE = args.engine
-    DatasetTest.CLUSTER_CONFIG["name"] = args.connection
-    DatasetTest.CLUSTER_CONFIG.update(
-        dict(item.split('=') for item in args.cluster_options))
+    DatasetTest.CONNECTION_CONFIG["name"] = args.connection
+    DatasetTest.CONNECTION_CONFIG.update(
+        dict(item.split('=') for item in args.connection_options))
     unittest.main(verbosity=2)
 
 
