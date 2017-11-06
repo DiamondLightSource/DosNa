@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
+import logging as logging
 import sys
 import unittest
-import logging as logging
 
-import numpy as np
 import dosna as dn
+import numpy as np
 
 logging.basicConfig(level=logging.DEBUG, format="LOG: %(message)s")
 log = logging.getLogger(__name__)
@@ -16,7 +16,6 @@ class DatasetTest(unittest.TestCase):
 
     BACKEND = 'ram'
     ENGINE = 'cpu'
-    POOL = 'test_dosna'
     CLUSTER_CONFIG = {}
 
     def setUp(self):
@@ -41,6 +40,7 @@ class DatasetTest(unittest.TestCase):
 
     def test_existing(self):
         self.assertTrue(self.C.has_dataset(self.fakeds))
+        self.assertFalse(self.C.has_dataset('NonExistantDataset'))
 
     def test_number_chunks(self):
         self.assertSequenceEqual(list(self.ds.chunks), [4, 4, 4])
@@ -102,22 +102,19 @@ if __name__ == "__main__":
                         help='Select backend (ram | hdf5 | ceph)')
     parser.add_argument('--engine', dest='engine', default='cpu',
                         help='Select engine (cpu | joblib | mpi)')
-    parser.add_argument('--cluster', dest='cluster', default='test-cluster',
-                        help='Cluster name')
+    parser.add_argument('--connection', dest='connection',
+                        default='test-connection',
+                        help='Connection name')
     parser.add_argument('--cluster-options', dest='cluster_options', nargs='+',
                         default=[], help='Cluster options using the format: '
                                          'key1=val1 [key2=val2...]')
-    parser.add_argument('--pool', dest='pool', default='test_dosna',
-                        help='Existing pool to use during tests '
-                        '(default: test_dosna).')
 
     args, unknownargs = parser.parse_known_args()
     sys.argv = [sys.argv[0]] + unknownargs
 
     DatasetTest.BACKEND = args.backend
     DatasetTest.ENGINE = args.engine
-    DatasetTest.POOL = args.pool
-    DatasetTest.CLUSTER_CONFIG["name"] = args.cluster
+    DatasetTest.CLUSTER_CONFIG["name"] = args.connection
     DatasetTest.CLUSTER_CONFIG.update(
         dict(item.split('=') for item in args.cluster_options))
 
