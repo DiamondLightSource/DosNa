@@ -5,7 +5,7 @@ from importlib import import_module
 
 
 __current = None
-available = ['cpu', 'joblib', 'mpi']
+available = ['cpu', 'jl', 'mpi']
 
 
 def use_engine(engine, **kwargs):
