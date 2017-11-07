@@ -80,7 +80,7 @@ class CpuDataset(Wrapper):
             self.del_chunk(idx)
 
     def delete(self):
-        self.instance.pool.del_dataset(self.name)
+        self.instance.connection.del_dataset(self.name)
 
     def load(self, data):
         if data.shape != self.shape:
