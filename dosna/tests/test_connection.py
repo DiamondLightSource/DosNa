@@ -20,7 +20,7 @@ class ConnectionTest(unittest.TestCase):
     CONNECTION_CONFIG = {}
 
     def setUp(self):
-        log.info('ClusterTest: %s, %s, %s',
+        log.info('ConnectionTest: %s, %s, %s',
                  self.BACKEND, self.ENGINE, self.CONNECTION_CONFIG)
 
         dn.use(backend=self.BACKEND, engine=self.ENGINE)
