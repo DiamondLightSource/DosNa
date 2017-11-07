@@ -48,7 +48,7 @@ class MemConnection(BaseConnection):
         return dataset
 
     def get_dataset(self, name):
-        if self.has_dataset(name):
+        if not self.has_dataset(name):
             raise Exception('Dataset `%s` does not exist' % name)
         return self.datasets[name]
 
