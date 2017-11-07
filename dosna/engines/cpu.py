@@ -1,12 +1,13 @@
 #!/usr/bin/env python
+"""cpu """
 
 import numpy as np
 
 from dosna import Engine
 from dosna.backends import get_backend
 from dosna.base import Wrapper
-
 from six.moves import range
+
 
 class CpuConnection(Wrapper):
 
@@ -119,4 +120,4 @@ class CpuDataChunk(Wrapper):
 
 
 # Export Engine
-__engine__ = Engine('cpu', CpuConnection, CpuDataset, CpuDataChunk, {})
+_engine = Engine('cpu', CpuConnection, CpuDataset, CpuDataChunk, {})

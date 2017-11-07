@@ -1,18 +1,17 @@
 #!/usr/bin/env python
-"""
-Backend jl uses module joblib to parallelize the dataset processing functions
-"""
+"""Backend jl uses module joblib to parallelize the dataset processing 
+functions"""
 
 import logging as log
 import tempfile
 
 import numpy as np
-from joblib import Parallel, delayed, dump, load
 
 from dosna import Engine
 from dosna.backends import get_backend
 from dosna.base import Wrapper
 from dosna.engines.cpu import CpuDataset
+from joblib import Parallel, delayed, dump, load
 from six.moves import range
 
 
@@ -186,5 +185,5 @@ class JoblibDataChunk(Wrapper):
 
 
 # Export Engine
-__engine__ = Engine('jl', JoblibConnection, JoblibDataset, JoblibDataChunk,
+_engine = Engine('jl', JoblibConnection, JoblibDataset, JoblibDataChunk,
                  dict(njobs=-1, backend='multiprocessing'))

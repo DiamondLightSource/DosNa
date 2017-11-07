@@ -1,16 +1,15 @@
 #!/usr/bin/env python
-"""
-Backend cpu uses the current computer cpu to run the main operations on
-datasets
-"""
+"""Backend cpu uses the current computer cpu to run the main operations on
+datasets"""
 
 import logging
+
+from mpi4py import MPI
 
 from dosna import Engine
 from dosna.backends import get_backend
 from dosna.base import Wrapper
 from dosna.engines.cpu import CpuDataset
-from mpi4py import MPI
 from six.moves import range
 
 log = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ class MpiConnection(Wrapper, MpiMixin):
         bname = kwargs.pop('backend', None)
         backend = get_backend(bname)
 
-        bcomm = comm or __engine__.params['comm']
+        bcomm = comm or _engine.params['comm']
         self.cparams = backend, name, kwargs
         self.ceph_backend = (backend.name == 'ceph')
         instance = backend.Connection(name, **kwargs)
@@ -139,5 +138,5 @@ class MpiDataChunk(Wrapper):
 
 
 # Export Engine
-__engine__ = Engine('mpi', MpiConnection, MpiDataset, MpiDataChunk,
+_engine = Engine('mpi', MpiConnection, MpiDataset, MpiDataChunk,
                     dict(comm=MPI.COMM_WORLD))

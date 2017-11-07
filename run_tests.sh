@@ -11,6 +11,7 @@ else
         echo "========================================"
         echo "Running tests on ${script}"
         echo "========================================"
-        PYTHONPATH=. python dosna/tests/test_${script}.py $@
+        PYTHONPATH=".:$PYTHONPATH"
+        python dosna/tests/test_${script}.py $@
     done
 fi

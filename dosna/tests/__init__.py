@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-"""
-Helper functions used in dosna tests
-"""
+"""Helper functions used in dosna tests"""
 
 import logging
 import sys

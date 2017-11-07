@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-"""
-backend RAM keeps every data structure in memory
-"""
+"""backend RAM keeps every data structure in memory"""
 
 import logging
 
@@ -116,4 +114,4 @@ class MemDataChunk(BaseDataChunk):
         self.data[slices] = values
 
 
-__backend__ = Backend('ram', MemConnection, MemDataset, MemDataChunk)
+_backend = Backend('ram', MemConnection, MemDataset, MemDataChunk)

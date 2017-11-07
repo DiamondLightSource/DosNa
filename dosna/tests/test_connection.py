@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import logging as logging
+import logging
 import sys
 import unittest
 
@@ -30,8 +30,8 @@ class ConnectionTest(unittest.TestCase):
         self.connection_handle.disconnect()
 
     def test_config(self):
-        self.assertIn(self.BACKEND, dn.backends.available)
-        self.assertIn(self.ENGINE, dn.engines.available)
+        self.assertIn(self.BACKEND, dn.backends.AVAILABLE)
+        self.assertIn(self.ENGINE, dn.engines.AVAILABLE)
 
     def test_connection(self):
         connection_handle = dn.Connection(**self.CONNECTION_CONFIG)

@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-"""
-Backend hdf5 uses hdf files to store the dataset and chunks data
-"""
+"""Backend hdf5 uses hdf files to store the dataset and chunks data"""
 
 import logging
 import os
 import shutil
 
+import h5py as h5
 import numpy as np
 
-import h5py as h5
 from dosna import Backend
 from dosna.base import BaseConnection, BaseDataChunk, BaseDataset
 from dosna.utils import DirectoryTreeMixin, dtype2str
@@ -180,4 +178,4 @@ class H5DataChunk(BaseDataChunk, DirectoryTreeMixin):
             file_handle['data'][slices] = values
 
 
-__backend__ = Backend('hdf5', H5Connection, H5Dataset, H5DataChunk)
+_backend = Backend('hdf5', H5Connection, H5Dataset, H5DataChunk)

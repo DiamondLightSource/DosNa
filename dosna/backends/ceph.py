@@ -1,13 +1,11 @@
 #!/usr/bin/env python
-"""
-Backend ceph uses a ceph cluster to store the dataset and chunks data
-"""
+"""Backend ceph uses a ceph cluster to store the dataset and chunks data"""
 
 import logging
 
 import numpy as np
-import rados
 
+import rados
 from dosna import Backend
 from dosna.base import BaseConnection, BaseDataChunk, BaseDataset
 from dosna.utils import dtype2str, shape2str, str2shape
@@ -193,5 +191,5 @@ class CephDataChunk(BaseDataChunk):
         return self.ioctx.read(self.name, length=length, offset=offset)
 
 
-__backend__ = Backend('ceph', CephConnection, CephDataset,
+_backend = Backend('ceph', CephConnection, CephDataset,
                       CephDataChunk)
