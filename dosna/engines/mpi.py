@@ -1,15 +1,18 @@
+#!/usr/bin/env python
+"""Backend cpu uses the current computer cpu to run the main operations on
+datasets"""
 
-
-import logging as log
+import logging
 
 from mpi4py import MPI
+
+from dosna import Engine
+from dosna.backends import get_backend
+from dosna.base import Wrapper
+from dosna.engines.cpu import CpuDataset
 from six.moves import range
 
-from .. import Engine
-from ..base import Wrapper
-from ..backends import get_backend
-
-from .cpu import CpuDataset
+log = logging.getLogger(__name__)
 
 
 class MpiMixin(object):
@@ -24,16 +27,16 @@ class MpiMixin(object):
         self.mpi_comm.Barrier()
 
 
-class MpiCluster(Wrapper, MpiMixin):
+class MpiConnection(Wrapper, MpiMixin):
 
     def __init__(self, name, comm=None, **kwargs):
         bname = kwargs.pop('backend', None)
         backend = get_backend(bname)
 
-        bcomm = comm or __engine__.params['comm']
+        bcomm = comm or _engine.params['comm']
         self.cparams = backend, name, kwargs
         self.ceph_backend = (backend.name == 'ceph')
-        instance = backend.Cluster(name, **kwargs)
+        instance = backend.Connection(name, **kwargs)
 
         Wrapper.__init__(self, instance)
         MpiMixin.__init__(self, bcomm)
@@ -41,61 +44,18 @@ class MpiCluster(Wrapper, MpiMixin):
         if backend.name == 'memory':
             log.warning('MPI engine will work unexpectedly with RAM backend')
 
-    def create_pool(self, *args, **kwargs):
-        if self.mpi_is_root:
-            self.instance.create_pool(*args, **kwargs)
-        self.mpi_barrier()
-
-        if self.ceph_backend:
-            # Ceph processes require new connection to see the new pool
-            self.instance.disconnect()
-            backend, name, kwargs = self.cparams
-            self.instance = backend.Cluster(name, **kwargs)
-            self.instance.connect()
-            self.mpi_barrier()
-
-        return self.get_pool(*args, **kwargs)
-
-    def get_pool(self, *args, **kwargs):
-        pool = self.instance.get_pool(*args, **kwargs)
-        return MpiPool(pool, self.mpi_comm)
-
-    def del_pool(self, *args, **kwargs):
-        self.mpi_barrier()
-        if self.mpi_is_root:
-            self.instance.del_pool(*args, **kwargs)
-        self.mpi_barrier()
-
-        if self.ceph_backend:
-            # Ceph processes require new connection to clear the pool
-            self.instance.disconnect()
-            backend, name, kwargs = self.cparams
-            self.instance = backend.Cluster(name, **kwargs)
-            self.instance.connect()
-            self.mpi_barrier()
-
-    def __getitem__(self, pool_name):
-        return self.get_pool(pool_name)
-
-
-class MpiPool(Wrapper, MpiMixin):
-
-    def __init__(self, pool, mpi_comm):
-        Wrapper.__init__(self, pool)
-        MpiMixin.__init__(self, mpi_comm)
-
     def create_dataset(self, name, *args, **kwargs):
         if self.mpi_is_root:
-            ds = self.instance.create_dataset(name, *args, **kwargs)
+            dataset = self.instance.create_dataset(name, *args, **kwargs)
         self.mpi_barrier()
-        ds = self.get_dataset(name)
+        dataset = self.get_dataset(name)
         if 'data' in kwargs:
-            ds.load(kwargs['data'])
-        return ds
+            dataset.load(kwargs['data'])
+        return dataset
 
     def get_dataset(self, *args, **kwargs):
-        ds = self.instance.get_dataset(*args, **kwargs)
-        return MpiDataset(ds, self.mpi_comm)
+        dataset = self.instance.get_dataset(*args, **kwargs)
+        return MpiDataset(dataset, self.mpi_comm)
 
     def del_dataset(self, *args, **kwargs):
         self.mpi_barrier()
@@ -132,7 +92,7 @@ class MpiDataset(CpuDataset, MpiMixin):
     def delete(self):
         self.mpi_barrier()
         if self.mpi_is_root:
-            self.instance.pool.del_dataset(self.name)
+            self.instance.connection.del_dataset(self.name)
         self.mpi_barrier()
 
     def load(self, data):
@@ -164,20 +124,19 @@ class MpiDataset(CpuDataset, MpiMixin):
 
     def clone(self, output_name):
         if self.mpi_is_root:
-            out = self.instance.pool.create_dataset(
+            out = self.instance.connection.create_dataset(
                 output_name, shape=self.shape,
                 dtype=self.dtype, chunks=self.chunk_size,
                 fillvalue=self.fillvalue)
         self.mpi_barrier()
-        out = self.instance.pool.get_dataset(output_name)
+        out = self.instance.connection.get_dataset(output_name)
         return MpiDataset(out, self.mpi_comm)
 
 
 class MpiDataChunk(Wrapper):
-
     pass
 
 
 # Export Engine
-__engine__ = Engine('mpi', MpiCluster, MpiPool, MpiDataset, MpiDataChunk,
+_engine = Engine('mpi', MpiConnection, MpiDataset, MpiDataChunk,
                     dict(comm=MPI.COMM_WORLD))

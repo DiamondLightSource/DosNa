@@ -1,33 +1,20 @@
-
+#!/usr/bin/env python
+"""cpu """
 
 import numpy as np
 
-from .. import Engine
-from ..base import Wrapper
-from ..backends import get_backend
-
+from dosna import Engine
+from dosna.backends import get_backend
+from dosna.base import Wrapper
 from six.moves import range
 
-class CpuCluster(Wrapper):
+
+class CpuConnection(Wrapper):
 
     def __init__(self, *args, **kwargs):
         bname = kwargs.pop('backend', None)
-        instance = get_backend(bname).Cluster(*args, **kwargs)
-        super(CpuCluster, self).__init__(instance)
-
-    def create_pool(self, *args, **kwargs):
-        pool = self.instance.create_pool(*args, **kwargs)
-        return CpuPool(pool)
-
-    def get_pool(self, *args, **kwargs):
-        pool = self.instance.get_pool(*args, **kwargs)
-        return CpuPool(pool)
-
-    def __getitem__(self, pool_name):
-        return self.get_pool(pool_name)
-
-
-class CpuPool(Wrapper):
+        instance = get_backend(bname).Connection(*args, **kwargs)
+        super(CpuConnection, self).__init__(instance)
 
     def create_dataset(self, *args, **kwargs):
         ds = self.instance.create_dataset(*args, **kwargs)
@@ -94,7 +81,7 @@ class CpuDataset(Wrapper):
             self.del_chunk(idx)
 
     def delete(self):
-        self.instance.pool.del_dataset(self.name)
+        self.instance.connection.del_dataset(self.name)
 
     def load(self, data):
         if data.shape != self.shape:
@@ -120,7 +107,7 @@ class CpuDataset(Wrapper):
             self.set_chunk_data(idx, data)
 
     def clone(self, output_name):
-        out = self.instance.pool.create_dataset(
+        out = self.instance.connection.create_dataset(
             output_name, shape=self.shape,
             dtype=self.dtype, chunks=self.chunk_size,
             fillvalue=self.fillvalue)
@@ -133,4 +120,4 @@ class CpuDataChunk(Wrapper):
 
 
 # Export Engine
-__engine__ = Engine('cpu', CpuCluster, CpuPool, CpuDataset, CpuDataChunk, {})
+_engine = Engine('cpu', CpuConnection, CpuDataset, CpuDataChunk, {})

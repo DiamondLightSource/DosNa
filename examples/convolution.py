@@ -1,4 +1,7 @@
+#!/usr/bin/env python
+"""3D convolution using a gaussian filter
 
+All the data is managed using dosna"""
 
 from __future__ import print_function
 
@@ -24,13 +27,12 @@ parser.add_argument('--backend', dest='backend', default='hdf5',
                     help='Select backend to use (ram | *hdf5 | ceph)')
 parser.add_argument('--engine', dest='engine', default='mpi',
                     help='Select engine to use (cpu | joblib | *mpi)')
-parser.add_argument('--cluster', dest='cluster', default='test-cluster',
-                    help='Cluster name')
-parser.add_argument('--cluster-options', dest='cluster_options', nargs='+',
-                    default=[], help='Cluster options using the format: '
-                                     'key1=val1 [key2=val2...]')
-parser.add_argument('--pool', dest='pool', default='test_dosna',
-                    help='Existing pool name in the selected backend')
+parser.add_argument('--connection', dest='connection', default='test-dosna',
+                    help='Connection name')
+parser.add_argument('--connection-options', dest='connection_options',
+                    nargs='+', default=[],
+                    help='Cluster options using the format: '
+                         'key1=val1 [key2=val2...]')
 parser.add_argument('--out', dest='out', default='.',
                     help='Output directory for the results (default ".").')
 
@@ -67,15 +69,15 @@ dn.use(backend=args.backend, engine=args.engine)
 NTESTS = args.ntest
 SIGMA = args.sigma
 TRUNC = 3
-CLUSTER_CONFIG = {"name": args.cluster}
-CLUSTER_CONFIG.update(dict(item.split('=') for item in args.cluster_options))
-POOL = args.pool
+CONNECTION_CONFIG = {"name": args.connection}
+CONNECTION_CONFIG.update(
+    dict(item.split('=') for item in args.connection_options))
 OUT_PATH = args.out
 TMP=args.tmp
 
 engine, backend = dn.status()
-pprint('Starting Test == Backend: {}, Engine: {}, Cluster: {}, Pool: {}, Out: {}'
-       .format(backend.name, engine.name, CLUSTER_CONFIG, POOL, OUT_PATH), rank=0)
+pprint('Starting Test == Backend: {}, Engine: {}, config: {}, Out: {}'
+       .format(backend.name, engine.name, CONNECTION_CONFIG, OUT_PATH), rank=0)
 
 
 ###############################################################################
@@ -227,26 +229,24 @@ for i, DS in enumerate(DATA_SIZE):
     f, data = create_random_dataset(DS)
 
     for j, CS in enumerate(CHUNK_SIZE):
-        with dn.Cluster(**CLUSTER_CONFIG) as C:
-            if backend.name in ['ram', 'hdf5'] and not C.has_pool(POOL):
-                C.create_pool(POOL)
-            with C[POOL] as P:
-                pprint('Loading Data -- shape: {} chunks: {}'
-                       .format(DS, CS))
-                with MpiTimer('Data loaded') as t:
-                    ds = P.create_dataset('data', data=data, chunks=(CS, CS, CS))
+        with dn.Connection(**CONNECTION_CONFIG) as connection:
+            pprint('Loading Data -- shape: {} chunks: {}'
+                   .format(DS, CS))
+            with MpiTimer('Data loaded') as t:
+                dataset = connection.create_dataset('data', data=data,
+                                               chunks=(CS, CS, CS))
 
-                for k in range(NTESTS):
-                    t1 = convolve1(ds, SIGMA)
-                    t2 = convolve2(ds, SIGMA)
+            for k in range(NTESTS):
+                t1 = convolve1(dataset, SIGMA)
+                t2 = convolve2(dataset, SIGMA)
 
-                    if mpi_root():
-                        dout[i, j, 0, k] = t.time
-                        dout[i, j, 1, k] = t1
-                        dout[i, j, 2, k] = t2
+                if mpi_root():
+                    dout[i, j, 0, k] = t.time
+                    dout[i, j, 1, k] = t1
+                    dout[i, j, 2, k] = t2
 
-                with MpiTimer('Data removed') as t:
-                    ds.delete()
+            with MpiTimer('Data removed') as t:
+                ds.delete()
 
     f.close()
 if mpi_root():

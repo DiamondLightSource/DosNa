@@ -1,25 +1,28 @@
-
-
-import logging as log
+#!/usr/bin/env python
+"""Helper functions to select engine and backend"""
 
 from collections import namedtuple
+import logging
 
-from .base import Backend, Engine
-from .backends import use_backend, get_backend
-from .engines import use_engine, get_engine
+from dosna.backends import get_backend, use_backend
+from dosna.base import Backend, Engine
+from dosna.engines import get_engine, use_engine
+
+log = logging.getLogger(__name__)
+
+_current = Connection = Dataset = DataChunk = None
 
 
-Cluster = Pool = Dataset = DataChunk = None
-
-
-def use(engine=None, backend=None, engine_kw={}):
+def use(engine=None, backend=None, engine_kw=None):
+    if engine_kw is None:
+        engine_kw = {}
     if backend is not None:
         use_backend(backend)
     if engine is not None:
         use_engine(engine, **engine_kw)
 
-    global __current, Cluster, Pool, Dataset, DataChunk
-    _, Cluster, Pool, Dataset, DataChunk, _ = __current = get_engine()
+    global _current, Connection, Dataset, DataChunk
+    _, Connection, Dataset, DataChunk, _ = _current = get_engine()
 
 
 def compatible(engine, backend):
@@ -39,8 +42,8 @@ def status(show=False):
     backend = get_backend()
     if show:
         log.info('---------------------------')
-        log.info('Current Engine: %s' % engine.name)
-        log.info('Current Backend: %s' % backend.name)
+        log.info('Current Engine: %s', engine.name)
+        log.info('Current Backend: %s', backend.name)
         log.info('---------------------------')
 
     return Status(engine, backend)

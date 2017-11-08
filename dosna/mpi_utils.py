@@ -1,12 +1,14 @@
+#!/usr/bin/env python
+"""Util functions related to mpi"""
 
-
-from __future__ import with_statement, print_function
+from __future__ import print_function, with_statement
 
 import time
 from math import ceil, log10
+
 from mpi4py import MPI
 
-from . import status
+from dosna import status
 
 
 def mpi_comm():
@@ -55,7 +57,7 @@ class MpiTimer(object):
         self.tstart = time.time()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, *args):
         mpi_barrier()
         self.tend = time.time()
         self.time = self.tend - self.tstart

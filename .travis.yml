@@ -35,6 +35,7 @@ install:
 
 before_script:
   - sudo ./common/start-ceph-in-docker.sh
+  - mkdir test-dosna
 
 script:
   - ./run_tests.sh --engine $ENGINE --backend $BACKEND

@@ -34,4 +34,4 @@ docker cp ${container}:/etc/ceph/ceph.conf .
 docker cp ${container}:/etc/ceph/ceph.client.admin.keyring /etc/ceph
 chmod +r /etc/ceph/ceph.client.admin.keyring
 chmod +r ceph.conf
-rados mkpool test_dosna
+rados mkpool test-dosna

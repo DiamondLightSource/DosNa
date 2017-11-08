@@ -1,15 +1,21 @@
+#!/usr/bin/env python
+"""Base classes for every backend and engine"""
 
-
+import logging
 from collections import namedtuple
 from itertools import product
 
 import numpy as np
+
 from six.moves import range
 
-# Currently there is no need for more fancy attributes
-Backend = namedtuple('Backend', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk'])
+log = logging.getLogger(__name__)
 
-Engine = namedtuple('Engine', ['name', 'Cluster', 'Pool', 'Dataset', 'DataChunk', 'params'])
+# Currently there is no need for more fancy attributes
+Backend = namedtuple('Backend', ['name', 'Connection', 'Dataset', 'DataChunk'])
+
+Engine = namedtuple('Engine', ['name', 'Connection', 'Dataset', 'DataChunk',
+                               'params'])
 
 
 class Wrapper(object):
@@ -34,11 +40,13 @@ class Wrapper(object):
         self.instance.__exit__(*args)
 
 
-class BaseCluster(object):
+class BaseConnection(object):
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name, open_mode="a", *args, **kwargs):
         self._name = name
         self._connected = False
+        self._mode = open_mode
+        log.debug('Extra connection options: args=%s kwargs=%s', args, kwargs)
 
     @property
     def name(self):
@@ -48,10 +56,16 @@ class BaseCluster(object):
     def connected(self):
         return self._connected
 
+    @property
+    def mode(self):
+        return self._mode
+
     def connect(self):
+        log.debug("Connecting to %s", self.name)
         self._connected = True
 
     def disconnect(self):
+        log.debug("Disconnecting from %s", self.name)
         self._connected = False
 
     def __enter__(self):
@@ -63,94 +77,38 @@ class BaseCluster(object):
         if self.connected:
             self.disconnect()
 
-    def create_pool(self, name, open_mode='a'):
-        raise NotImplementedError('`create_pool` not implemented for this backend')
-
-    def get_pool(self, name, open_mode='a'):
-        raise NotImplementedError('`get_pool` not implemented for this backend')
-
-    def has_pool(self, name):
-        raise NotImplementedError('`has_pool` not implemented for this backend')
-
-    def del_pool(self, name):
-        raise NotImplementedError('`delete_pool` not implemented for this backend')
-
-    def __getitem__(self, name):
-        return self.get_pool(name)
-
-    def __contains__(self, name):
-        return self.has_pool(name)
-
-
-class BasePool(object):
-
-    def __init__(self, cluster, name, open_mode='a'):
-        if not cluster.has_pool(name):
-            raise Exception('Wrong initialization of a Pool')
-
-        self._cluster = cluster
-        self._name = name
-        self._mode = open_mode
-        self._isopen = False
-
-    @property
-    def cluster(self):
-        return self._cluster
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def isopen(self):
-        return self._isopen
-
-    @property
-    def mode(self):
-        return self._mode
-
-    def open(self):
-        self._isopen = True
-
-    def close(self):
-        self._isopen = False
-
-    def __enter__(self):
-        if not self.isopen:
-            self.open()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.isopen:
-            self.close()
-
-    def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunks=None):
-        raise NotImplementedError('`create_dataset` not implemented for this backend')
-
-    def get_dataset(self, name):
-        raise NotImplementedError('`get_dataset` not implemented for this backend')
-
-    def has_dataset(self, name):
-        raise NotImplementedError('`has_dataset` not implemented for this backend')
-
-    def del_dataset(self, name):
-        raise NotImplementedError('`del_dataset` not implemented for this backend')
-
     def __getitem__(self, name):
         return self.get_dataset(name)
 
     def __contains__(self, name):
         return self.has_dataset(name)
 
+    def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
+                       data=None, chunks=None):
+        raise NotImplementedError('`create_dataset` not implemented '
+                                  'for this backend')
+
+    def get_dataset(self, name):
+        raise NotImplementedError('`get_dataset` not implemented '
+                                  'for this backend')
+
+    def has_dataset(self, name):
+        raise NotImplementedError('`has_dataset` not implemented '
+                                  'for this backend')
+
+    def del_dataset(self, name):
+        raise NotImplementedError('`del_dataset` not implemented '
+                                  'for this backend')
+
 
 class BaseDataset(object):
 
-    def __init__(self, pool, name, shape, dtype, fillvalue, chunks, csize):
-        if not pool.has_dataset(name):
+    def __init__(self, connection, name, shape, dtype, fillvalue, chunks,
+                 csize):
+        if not connection.has_dataset(name):
             raise Exception('Wrong initialization of a Dataset')
 
-        self._pool = pool
+        self._connection = connection
         self._name = name
         self._shape = shape
         self._dtype = dtype
@@ -162,8 +120,8 @@ class BaseDataset(object):
         self._ndim = len(self._shape)
 
     @property
-    def pool(self):
-        return self._pool
+    def connection(self):
+        return self._connection
 
     @property
     def name(self):
@@ -199,17 +157,21 @@ class BaseDataset(object):
 
     # To be implementd by Storage Backend
 
-    def create_chunk(self, idx, data=None, cslices=None):
-        raise NotImplementedError('`create_chunk` not implemented for this backend')
+    def create_chunk(self, idx, data=None, slices=None):
+        raise NotImplementedError('`create_chunk` not implemented '
+                                  'for this backend')
 
     def get_chunk(self, idx):
-        raise NotImplementedError('`get_chunk` not implemented for this backend')
+        raise NotImplementedError('`get_chunk` not implemented '
+                                  'for this backend')
 
     def has_chunk(self, idx):
-        raise NotImplementedError('`has_chunk` not implemented for this backend')
+        raise NotImplementedError('`has_chunk` not implemented '
+                                  'for this backend')
 
     def del_chunk(self, idx):
-        raise NotImplementedError('`del_chunk` not implemented for this backend')
+        raise NotImplementedError('`del_chunk` not implemented '
+                                  'for this backend')
 
     # Standard implementations, could be overriden for more efficient access
 
@@ -246,10 +208,12 @@ class BaseDataset(object):
         raise NotImplementedError('`clone` not implemented for this backend')
 
     def get_data(self, slices=None):
-        raise NotImplementedError('`get_data` not implemented for this backend')
+        raise NotImplementedError('`get_data` not implemented '
+                                  'for this backend')
 
     def set_data(self, data, slices=None):
-        raise NotImplementedError('`set_data` not implemented for this backend')
+        raise NotImplementedError('`set_data` not implemented '
+                                  'for this backend')
 
     # Utility methods used by all backends and engines
 
@@ -265,13 +229,13 @@ class BaseDataset(object):
                       for j, (i, s) in enumerate(zip(idx, self.chunk_size))))
 
     def _process_slices(self, slices, squeeze=False):
-        if type(slices) in [slice, int]:
+        if isinstance(slices, (slice, int)):
             slices = [slices]
         elif slices is Ellipsis:
             slices = [slice(None)]
         elif np.isscalar(slices):
             slices = [int(slices)]
-        elif type(slices) not in [list, tuple]:
+        elif not isinstance(slices, (list, tuple)):
             raise Exception('Invalid Slicing with index of type `{}`'
                             .format(type(slices)))
         else:
@@ -281,7 +245,8 @@ class BaseDataset(object):
             nmiss = self.ndim - len(slices)
             while Ellipsis in slices:
                 idx = slices.index(Ellipsis)
-                slices = slices[:idx] + ([slice(None)] * (nmiss + 1)) + slices[idx + 1:]
+                slices = slices[:idx] + ([slice(None)] * (nmiss + 1)) \
+                    + slices[idx + 1:]
             if len(slices) < self.ndim:
                 slices = list(slices) + ([slice(None)] * nmiss)
         elif len(slices) > self.ndim:
@@ -291,37 +256,40 @@ class BaseDataset(object):
         final_slices = []
         shape = self.shape
         squeeze_axis = []
-        for i, s in enumerate(slices):
-            if type(s) == int:
-                final_slices.append(slice(s, s + 1))
-                squeeze_axis.append(i)
-            elif type(s) == slice:
-                start = s.start
-                stop = s.stop
+        for index, slice_ in enumerate(slices):
+            if isinstance(slice_, int):
+                final_slices.append(slice(slice_, slice_ + 1))
+                squeeze_axis.append(index)
+            elif isinstance(slice_, slice):
+                start = slice_.start
+                stop = slice_.stop
                 if start is None:
                     start = 0
                 if stop is None:
-                    stop = shape[i]
+                    stop = shape[index]
                 elif stop < 0:
-                    stop = self.shape[i] + stop
-                if start < 0 or start >= self.shape[i]:
-                    raise Exception('Only possitive and in-bounds slicing supported: `{}`'
-                                           .format(slices))
-                if stop < 0 or stop > self.shape[i] or stop < start:
-                    raise Exception('Only possitive and in-bounds slicing supported: `{}`'
-                                           .format(slices))
-                if s.step is not None and s.step != 1:
+                    stop = self.shape[index] + stop
+                if start < 0 or start >= self.shape[index]:
+                    raise Exception('Only possitive and '
+                                    'in-bounds slicing supported: `{}`'
+                                    .format(slices))
+                if stop < 0 or stop > self.shape[index] or stop < start:
+                    raise Exception('Only possitive and '
+                                    'in-bounds slicing supported: `{}`'
+                                    .format(slices))
+                if slice_.step is not None and slice_.step != 1:
                     raise Exception('Only slicing with step 1 supported')
                 final_slices.append(slice(start, stop))
             else:
                 raise Exception('Invalid type `{}` in slicing, only integer or'
-                                ' slices are supported'.format(type(s)))
+                                ' slices are supported'.format(type(slice_)))
 
         if squeeze:
             return final_slices, squeeze_axis
         return final_slices
 
-    def _ndindex(self, dims):
+    @staticmethod
+    def _ndindex(dims):
         return product(*(range(d) for d in dims))
 
     def _chunk_slice_iterator(self, slices, ndim):
@@ -333,24 +301,24 @@ class BaseDataset(object):
         chunk_size = self.chunk_size
         chunks = self.chunks
 
-        for n, slc in enumerate(slices):
-            sstart = slc.start // chunk_size[n]
-            sstop = min((slc.stop - 1) // chunk_size[n], chunks[n] - 1)
+        for index, slc in enumerate(slices):
+            sstart = slc.start // chunk_size[index]
+            sstop = min((slc.stop - 1) // chunk_size[index], chunks[index] - 1)
             if sstop < 0:
                 sstop = 0
 
-            pad_start = slc.start - sstart * chunk_size[n]
-            pad_stop = slc.stop - sstop * chunk_size[n]
+            pad_start = slc.start - sstart * chunk_size[index]
+            pad_stop = slc.stop - sstop * chunk_size[index]
 
             _i = []  # index
             _c = []  # chunk slices in current dimension
             _g = []  # global slices in current dimension
 
-            for i in range(sstart, sstop + 1):
-                start = pad_start if i == sstart else 0
-                stop = pad_stop if i == sstop else chunk_size[n]
-                gchunk = i * chunk_size[n] - slc.start
-                _i += [i]
+            for chunk_index in range(sstart, sstop + 1):
+                start = pad_start if chunk_index == sstart else 0
+                stop = pad_stop if chunk_index == sstop else chunk_size[index]
+                gchunk = chunk_index * chunk_size[index] - slc.start
+                _i += [chunk_index]
                 _c += [slice(start, stop)]
                 _g += [slice(gchunk + start, gchunk + stop)]
 
@@ -359,19 +327,16 @@ class BaseDataset(object):
             cslices += [_c]
             gslices += [_g]
 
-        return (
-            zip(*
-                (
+        return (zip(*
                     (
-                        indexes[n][i],
-                        cslices[n][i],
-                        (n < ndim or None) and gslices[n][i],
-                    )
-                    for n, i in enumerate(idx)
-                )
-            )
-            for idx in self._ndindex(nchunks)
-        )
+                        (
+                            indexes[n][i],
+                            cslices[n][i],
+                            (n < ndim or None) and gslices[n][i],
+                        )
+                        for n, i in enumerate(idx)
+                    ))
+                for idx in self._ndindex(nchunks))
 
 
 class BaseDataChunk(object):
@@ -412,10 +377,12 @@ class BaseDataChunk(object):
         return self._fillvalue
 
     def get_data(self, slices=None):
-        raise NotImplementedError('`get_data` not implemented for this backend')
+        raise NotImplementedError('`get_data` not implemented '
+                                  'for this backend')
 
     def set_data(self, values, slices=None):
-        raise NotImplementedError('`set_data` not implemented for this backend')
+        raise NotImplementedError('`set_data` not implemented '
+                                  'for this backend')
 
     def __getitem__(self, slices):
         return self.get_data(slices=slices)
