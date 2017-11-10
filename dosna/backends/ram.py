@@ -5,13 +5,14 @@ import logging
 
 import numpy as np
 
-from dosna import Backend
-from dosna.base import BaseConnection, BaseDataChunk, BaseDataset
+from dosna.backends import Backend
+from dosna.backends.base import (BackendConnection, BackendDataChunk,
+                                 BackendDataset)
 
 log = logging.getLogger(__name__)
 
 
-class MemConnection(BaseConnection):
+class MemConnection(BackendConnection):
     """
     A Memory Connection represents a dictionary.
     """
@@ -60,7 +61,7 @@ class MemConnection(BaseConnection):
         del self.datasets[name]
 
 
-class MemDataset(BaseDataset):
+class MemDataset(BackendDataset):
 
     def __init__(self, pool, name, shape, dtype, fillvalue, chunks, csize):
         super(MemDataset, self).__init__(pool, name, shape, dtype, fillvalue,
@@ -100,7 +101,7 @@ class MemDataset(BaseDataset):
             del self.data_chunks[idx]
 
 
-class MemDataChunk(BaseDataChunk):
+class MemDataChunk(BackendDataChunk):
 
     def __init__(self, dataset, idx, name, shape, dtype, fillvalue):
         super(MemDataChunk, self).__init__(dataset, idx, name, shape,

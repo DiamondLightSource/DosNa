@@ -5,7 +5,6 @@ from collections import namedtuple
 import logging
 
 from dosna.backends import get_backend, use_backend
-from dosna.base import Backend, Engine
 from dosna.engines import get_engine, use_engine
 
 log = logging.getLogger(__name__)

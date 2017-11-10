@@ -3,49 +3,32 @@
 
 import numpy as np
 
-from dosna import Engine
 from dosna.backends import get_backend
-from dosna.base import Wrapper
+from dosna.engines import Engine
+from dosna.engines.base import EngineConnection, EngineDataChunk, EngineDataset
 from six.moves import range
 
 
-class CpuConnection(Wrapper):
+class CpuConnection(EngineConnection):
 
     def __init__(self, *args, **kwargs):
         bname = kwargs.pop('backend', None)
         instance = get_backend(bname).Connection(*args, **kwargs)
         super(CpuConnection, self).__init__(instance)
 
-    def create_dataset(self, *args, **kwargs):
-        ds = self.instance.create_dataset(*args, **kwargs)
-        ds = CpuDataset(ds)
-        if 'data' in kwargs:
-            ds.load(kwargs['data'])
-        return ds
-
-    def get_dataset(self, *args, **kwargs):
-        ds = self.instance.get_dataset(*args, **kwargs)
-        return CpuDataset(ds)
+    def get_dataset(self, name):
+        dataset = self.instance.get_dataset(name)
+        return CpuDataset(dataset)
 
     def __getitem__(self, ds_name):
         return self.get_dataset(ds_name)
 
 
-class CpuDataset(Wrapper):
+class CpuDataset(EngineDataset):
 
-    def create_chunk(self, *args, **kwargs):
-        chunk = self.instance.create_chunk(*args, **kwargs)
+    def get_chunk(self, idx):
+        chunk = self.instance.get_chunk(idx)
         return CpuDataChunk(chunk)
-
-    def get_chunk(self, *args, **kwargs):
-        chunk = self.instance.get_chunk(*args, **kwargs)
-        return CpuDataChunk(chunk)
-
-    def __getitem__(self, slices):
-        return self.get_data(slices)
-
-    def __setitem__(self, slices, values):
-        self.set_data(values, slices=slices)
 
     def get_data(self, slices=None):
         slices, squeeze_axis = self._process_slices(slices, squeeze=True)
@@ -56,7 +39,7 @@ class CpuDataset(Wrapper):
         for idx, cslice, gslice in chunk_iterator:
             output[gslice] = self.get_chunk_data(idx, slices=cslice)
 
-        if len(squeeze_axis) > 0:
+        if squeeze_axis:
             return np.squeeze(output, axis=squeeze_axis)
         return output
 
@@ -66,7 +49,7 @@ class CpuDataset(Wrapper):
 
         isscalar = np.isscalar(values)
         ndim = self.ndim if isscalar else values.ndim
-        slices, squeeze_axis = self._process_slices(slices, squeeze=True)
+        slices, _ = self._process_slices(slices, squeeze=True)
         chunk_iterator = self._chunk_slice_iterator(slices, ndim)
 
         for idx, cslice, gslice in chunk_iterator:
@@ -114,7 +97,7 @@ class CpuDataset(Wrapper):
         return CpuDataset(out)
 
 
-class CpuDataChunk(Wrapper):
+class CpuDataChunk(EngineDataChunk):
 
     pass
 

@@ -8,8 +8,9 @@ import shutil
 import h5py as h5
 import numpy as np
 
-from dosna import Backend
-from dosna.base import BaseConnection, BaseDataChunk, BaseDataset
+from dosna.backends import Backend
+from dosna.backends.base import (BackendConnection, BackendDataChunk,
+                                 BackendDataset)
 from dosna.utils import DirectoryTreeMixin, dtype2str
 
 _DATASET_METADATA_FILENAME = 'dataset.h5'
@@ -21,7 +22,7 @@ def _validate_path(path):
         raise Exception('`{}` is not a valid path'.format(path))
 
 
-class H5Connection(BaseConnection, DirectoryTreeMixin):
+class H5Connection(BackendConnection, DirectoryTreeMixin):
     """
     A HDF5 Cluster represents the local filesystem.
     """
@@ -107,7 +108,7 @@ class H5Connection(BaseConnection, DirectoryTreeMixin):
         shutil.rmtree(path)
 
 
-class H5Dataset(BaseDataset, DirectoryTreeMixin):
+class H5Dataset(BackendDataset, DirectoryTreeMixin):
 
     def __init__(self, *args, **kwargs):
         super(H5Dataset, self).__init__(*args, **kwargs)
@@ -155,7 +156,7 @@ class H5Dataset(BaseDataset, DirectoryTreeMixin):
             os.remove(self.relpath(self._idx2name(idx)))
 
 
-class H5DataChunk(BaseDataChunk, DirectoryTreeMixin):
+class H5DataChunk(BackendDataChunk, DirectoryTreeMixin):
 
     def __init__(self, *args, **kwargs):
         super(H5DataChunk, self).__init__(*args, **kwargs)

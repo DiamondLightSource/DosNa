@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Helper functions to store and get the selected engine"""
 
+from collections import namedtuple
 import logging as log
 
 from dosna.utils import named_module
@@ -8,6 +9,9 @@ from dosna.utils import named_module
 AVAILABLE = ['cpu', 'jl', 'mpi']
 
 _current = None
+
+Engine = namedtuple('Engine', ['name', 'Connection', 'Dataset', 'DataChunk',
+                               'params'])
 
 
 def use_engine(engine, **kwargs):
