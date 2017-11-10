@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
+SDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ "$#" -eq 0 ]; then
     echo "Unittest discovery mode"
     echo "========================================"
-    PYTHONPATH=. python -m unittest discover -s dosna/tests -v
+    PYTHONPATH=. python -m unittest discover -s "${SDIR}/dosna/tests" -v
 else
     echo "Unittest manual mode:" $@
     for script in 'connection' 'dataset';
@@ -11,7 +12,7 @@ else
         echo "========================================"
         echo "Running tests on ${script}"
         echo "========================================"
-        PYTHONPATH=".:$PYTHONPATH"
-        python dosna/tests/test_${script}.py $@
+        PYTHONPATH="${SDIR}:$PYTHONPATH"
+        python "${SDIR}/dosna/tests/test_${script}.py" $@
     done
 fi

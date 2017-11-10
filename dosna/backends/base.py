@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-"""Base classes for every backend and engine"""
+"""Base classes for every backend"""
 
 import logging
-from collections import namedtuple
 from itertools import product
 
 import numpy as np
@@ -11,36 +10,8 @@ from six.moves import range
 
 log = logging.getLogger(__name__)
 
-# Currently there is no need for more fancy attributes
-Backend = namedtuple('Backend', ['name', 'Connection', 'Dataset', 'DataChunk'])
 
-Engine = namedtuple('Engine', ['name', 'Connection', 'Dataset', 'DataChunk',
-                               'params'])
-
-
-class Wrapper(object):
-
-    instance = None
-
-    def __init__(self, instance):
-        self.instance = instance
-
-    def __getattr__(self, attr):
-        """
-        Attributes/Functions that do not exist in the extended class
-        are going to be passed to the instance being wrapped
-        """
-        return self.instance.__getattribute__(attr)
-
-    def __enter__(self):
-        self.instance.__enter__()
-        return self
-
-    def __exit__(self, *args):
-        self.instance.__exit__(*args)
-
-
-class BaseConnection(object):
+class BackendConnection(object):
 
     def __init__(self, name, open_mode="a", *args, **kwargs):
         self._name = name
@@ -97,11 +68,12 @@ class BaseConnection(object):
                                   'for this backend')
 
     def del_dataset(self, name):
+        """Remove dataset metadata only"""
         raise NotImplementedError('`del_dataset` not implemented '
                                   'for this backend')
 
 
-class BaseDataset(object):
+class BackendDataset(object):
 
     def __init__(self, connection, name, shape, dtype, fillvalue, chunks,
                  csize):
@@ -180,40 +152,6 @@ class BaseDataset(object):
 
     def set_chunk_data(self, idx, values, slices=None):
         self.get_chunk(idx)[slices] = values
-
-    # To be implemented by Processing Backends
-
-    def __getitem__(self, slices):
-        return self.get_data(slices=slices)
-
-    def __setitem__(self, slices, values):
-        return self.set_data(values, slices=slices)
-
-    def clear(self):
-        raise NotImplementedError('`clear` not implemented for this backend')
-
-    def delete(self):
-        raise NotImplementedError('`delete` not implemented for this backend')
-
-    def map(self, func, output_name):
-        raise NotImplementedError('`map` not implemented for this backend')
-
-    def apply(self, func):
-        raise NotImplementedError('`apply` not implemented for this backend')
-
-    def load(self, data):
-        raise NotImplementedError('`load` not implemented for this backend')
-
-    def clone(self, output_name):
-        raise NotImplementedError('`clone` not implemented for this backend')
-
-    def get_data(self, slices=None):
-        raise NotImplementedError('`get_data` not implemented '
-                                  'for this backend')
-
-    def set_data(self, data, slices=None):
-        raise NotImplementedError('`set_data` not implemented '
-                                  'for this backend')
 
     # Utility methods used by all backends and engines
 
@@ -339,7 +277,7 @@ class BaseDataset(object):
                 for idx in self._ndindex(nchunks))
 
 
-class BaseDataChunk(object):
+class BackendDataChunk(object):
 
     def __init__(self, dataset, idx, name, shape, dtype, fillvalue):
         if not dataset.has_chunk(idx):

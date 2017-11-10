@@ -4,11 +4,12 @@ datasets"""
 
 import logging
 
+import numpy as np
 from mpi4py import MPI
 
-from dosna import Engine
 from dosna.backends import get_backend
-from dosna.base import Wrapper
+from dosna.engines import Engine
+from dosna.engines.base import EngineConnection, EngineDataChunk
 from dosna.engines.cpu import CpuDataset
 from six.moves import range
 
@@ -27,7 +28,7 @@ class MpiMixin(object):
         self.mpi_comm.Barrier()
 
 
-class MpiConnection(Wrapper, MpiMixin):
+class MpiConnection(EngineConnection, MpiMixin):
 
     def __init__(self, name, comm=None, **kwargs):
         bname = kwargs.pop('backend', None)
@@ -38,29 +39,32 @@ class MpiConnection(Wrapper, MpiMixin):
         self.ceph_backend = (backend.name == 'ceph')
         instance = backend.Connection(name, **kwargs)
 
-        Wrapper.__init__(self, instance)
+        EngineConnection.__init__(self, instance)
         MpiMixin.__init__(self, bcomm)
 
         if backend.name == 'memory':
             log.warning('MPI engine will work unexpectedly with RAM backend')
 
-    def create_dataset(self, name, *args, **kwargs):
+    def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
+                       data=None, chunks=None):
+
         if self.mpi_is_root:
-            dataset = self.instance.create_dataset(name, *args, **kwargs)
+            self.instance.create_dataset(name, shape, dtype, fillvalue, data,
+                                         chunks)
         self.mpi_barrier()
         dataset = self.get_dataset(name)
-        if 'data' in kwargs:
-            dataset.load(kwargs['data'])
+        if data is not None:
+            dataset.load(data)
         return dataset
 
-    def get_dataset(self, *args, **kwargs):
-        dataset = self.instance.get_dataset(*args, **kwargs)
+    def get_dataset(self, name):
+        dataset = self.instance.get_dataset(name)
         return MpiDataset(dataset, self.mpi_comm)
 
-    def del_dataset(self, *args, **kwargs):
+    def del_dataset(self, name):
         self.mpi_barrier()
         if self.mpi_is_root:
-            self.instance.del_dataset(*args, **kwargs)
+            self.instance.del_dataset(name)
         self.mpi_barrier()
 
     def __getitem__(self, ds_name):
@@ -73,14 +77,14 @@ class MpiDataset(CpuDataset, MpiMixin):
         CpuDataset.__init__(self, ds)
         MpiMixin.__init__(self, mpi_comm)
 
-    def create_chunk(self, idx, *args, **kwargs):
+    def create_chunk(self, idx, data=None, slices=None):
         if self.mpi_is_root:
-            self.instance.create_chunk(idx, *args, **kwargs)
+            self.instance.create_chunk(idx, data, slices)
         self.mpi_barrier()
         return self.get_chunk(idx)
 
-    def get_chunk(self, *args, **kwargs):
-        chunk = self.instance.get_chunk(*args, **kwargs)
+    def get_chunk(self, idx):
+        chunk = self.instance.get_chunk(idx)
         return MpiDataChunk(chunk, self)
 
     def clear(self):
@@ -133,10 +137,10 @@ class MpiDataset(CpuDataset, MpiMixin):
         return MpiDataset(out, self.mpi_comm)
 
 
-class MpiDataChunk(Wrapper):
+class MpiDataChunk(EngineDataChunk):
     pass
 
 
 # Export Engine
 _engine = Engine('mpi', MpiConnection, MpiDataset, MpiDataChunk,
-                    dict(comm=MPI.COMM_WORLD))
+                 dict(comm=MPI.COMM_WORLD))

@@ -1,21 +1,21 @@
 #!/usr/bin/env python
-"""Backend jl uses module joblib to parallelize the dataset processing 
+"""Backend jl uses module joblib to parallelize the dataset processing
 functions"""
 
 import logging as log
 import tempfile
 
 import numpy as np
-
-from dosna import Engine
-from dosna.backends import get_backend
-from dosna.base import Wrapper
-from dosna.engines.cpu import CpuDataset
 from joblib import Parallel, delayed, dump, load
+
+from dosna.backends import get_backend
+from dosna.engines import Engine
+from dosna.engines.base import EngineConnection, EngineDataChunk
+from dosna.engines.cpu import CpuDataset
 from six.moves import range
 
 
-class JoblibConnection(Wrapper):
+class JoblibConnection(EngineConnection):
 
     def __init__(self, *args, **kwargs):
         bname = kwargs.pop('backend', None)
@@ -33,19 +33,9 @@ class JoblibConnection(Wrapper):
             log.warning('Joblib engine will work unexpectedly with '
                         'Memory backend')
 
-    def create_dataset(self, *args, **kwargs):
-        dataset = self.instance.create_dataset(*args, **kwargs)
-        dataset = JoblibDataset(dataset, self.njobs, self.jlbackend)
-        if 'data' in kwargs:
-            dataset.load(kwargs['data'])
-        return dataset
-
-    def get_dataset(self, *args, **kwargs):
-        dataset = self.instance.get_dataset(*args, **kwargs)
+    def get_dataset(self, name):
+        dataset = self.instance.get_dataset(name)
         return JoblibDataset(dataset, self.njobs, self.jlbackend)
-
-    def __getitem__(self, ds_name):
-        return self.get_dataset(ds_name)
 
 
 class JoblibDataset(CpuDataset):
@@ -55,12 +45,8 @@ class JoblibDataset(CpuDataset):
         self.njobs = njobs
         self.jlbackend = jlbackend
 
-    def create_chunk(self, *args, **kwargs):
-        chunk = self.instance.create_chunk(*args, **kwargs)
-        return JoblibDataChunk(chunk)
-
-    def get_chunk(self, *args, **kwargs):
-        chunk = self.instance.get_chunk(*args, **kwargs)
+    def get_chunk(self, idx):
+        chunk = self.instance.get_chunk(idx)
         return JoblibDataChunk(chunk)
 
     def _make_temporary_memmap(self, filename, data=None, shape=None):
@@ -180,10 +166,10 @@ def _set_chunk_data_joblib(inst, chunk_idx, cslice, gslice, dinput):
         inst.set_chunk_data(chunk_idx, dinput[gslice], slices=cslice)
 
 
-class JoblibDataChunk(Wrapper):
+class JoblibDataChunk(EngineDataChunk):
     pass
 
 
 # Export Engine
 _engine = Engine('jl', JoblibConnection, JoblibDataset, JoblibDataChunk,
-                 dict(njobs=-1, backend='multiprocessing'))
+                 dict(njobs=1, backend='multiprocessing'))

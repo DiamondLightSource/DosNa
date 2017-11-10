@@ -6,8 +6,9 @@ import logging
 import numpy as np
 
 import rados
-from dosna import Backend
-from dosna.base import BaseConnection, BaseDataChunk, BaseDataset
+from dosna.backends import Backend
+from dosna.backends.base import (BackendConnection, BackendDataChunk,
+                                 BackendDataset)
 from dosna.utils import dtype2str, shape2str, str2shape
 
 _SIGNATURE = "DosNa Dataset"
@@ -15,7 +16,7 @@ _SIGNATURE = "DosNa Dataset"
 log = logging.getLogger(__name__)
 
 
-class CephConnection(BaseConnection):
+class CephConnection(BackendConnection):
     """
     A Ceph Cluster that wraps LibRados.Cluster
     """
@@ -104,13 +105,12 @@ class CephConnection(BaseConnection):
 
     def del_dataset(self, name):
         if self.has_dataset(name):
-            self.get_dataset(name).clear()
             self.ioctx.remove_object(name)
         else:
             raise Exception('Dataset `{}` does not exist'.format(name))
 
 
-class CephDataset(BaseDataset):
+class CephDataset(BackendDataset):
     """
     CephDataset wraps an instance of Rados.Object
     """
@@ -156,12 +156,8 @@ class CephDataset(BaseDataset):
         if self.has_chunk(idx):
             self.ioctx.remove_object(self._idx2name(idx))
 
-    def clear(self):
-        for idx in self._ndindex(self.chunks):
-            self.del_chunk(idx)
 
-
-class CephDataChunk(BaseDataChunk):
+class CephDataChunk(BackendDataChunk):
 
     @property
     def ioctx(self):
@@ -191,5 +187,4 @@ class CephDataChunk(BaseDataChunk):
         return self.ioctx.read(self.name, length=length, offset=offset)
 
 
-_backend = Backend('ceph', CephConnection, CephDataset,
-                      CephDataChunk)
+_backend = Backend('ceph', CephConnection, CephDataset, CephDataChunk)
