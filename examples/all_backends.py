@@ -6,7 +6,7 @@ import numpy as np
 from itertools import product
 
 import dosna as dn
-from dosna.utils import Timer
+from dosna.util import Timer
 
 log.getLogger().setLevel(log.INFO)
 

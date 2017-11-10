@@ -4,7 +4,7 @@
 from collections import namedtuple
 import logging as log
 
-from dosna.utils import named_module
+from dosna.util import named_module
 
 AVAILABLE = ['cpu', 'jl', 'mpi']
 

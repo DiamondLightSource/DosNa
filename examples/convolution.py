@@ -5,19 +5,18 @@ All the data is managed using dosna"""
 
 from __future__ import print_function
 
-from os.path import join
-import numpy as np
-import h5py as h5
-
 import argparse
 import tempfile
+from os.path import join
+
+import h5py as h5
+import numpy as np
+from scipy.misc import imsave
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 import dosna as dn
-from dosna.mpi_utils import pprint, mpi_comm, mpi_rank, \
-    mpi_size, mpi_root, mpi_barrier, MpiTimer
-
-from scipy.ndimage import gaussian_filter, gaussian_filter1d
-from scipy.misc import imsave
+from dosna.util.mpi import (MpiTimer, mpi_barrier, mpi_comm, mpi_rank,
+                            mpi_root, mpi_size, pprint)
 
 ###############################################################################
 # Test parameters

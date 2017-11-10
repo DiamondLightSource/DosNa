@@ -9,7 +9,7 @@ import rados
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendDataset)
-from dosna.utils import dtype2str, shape2str, str2shape
+from dosna.util import dtype2str, shape2str, str2shape
 
 _SIGNATURE = "DosNa Dataset"
 

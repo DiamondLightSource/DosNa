@@ -4,7 +4,7 @@
 from collections import namedtuple
 import logging
 
-from dosna.utils import named_module
+from dosna.util import named_module
 
 log = logging.getLogger(__name__)
 

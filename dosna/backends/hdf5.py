@@ -11,7 +11,7 @@ import numpy as np
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendDataset)
-from dosna.utils import DirectoryTreeMixin, dtype2str
+from dosna.util import DirectoryTreeMixin, dtype2str
 
 _DATASET_METADATA_FILENAME = 'dataset.h5'
 log = logging.getLogger(__name__)

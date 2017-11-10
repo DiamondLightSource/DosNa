@@ -2,17 +2,16 @@
 
 from __future__ import print_function
 
-
-import numpy as np
-import h5py as h5
-
+import logging as log
 import tempfile
 
-import dosna as dn
-from dosna.mpi_utils import pprint, mpi_comm, mpi_rank, \
-    mpi_size, mpi_root, MpiTimer
+import h5py as h5
+import numpy as np
 
-import logging as log
+import dosna as dn
+from dosna.util.mpi import (MpiTimer, mpi_comm, mpi_rank, mpi_root, mpi_size,
+                            pprint)
+
 log.getLogger().setLevel(log.INFO)
 
 dn.use(engine='mpi', backend='hdf5')

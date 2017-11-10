@@ -1,12 +1,12 @@
 
 
 import logging as log
-
 import sys
+
 import numpy as np
 
 import dosna as dn
-from dosna.mpi_utils import mpi_root, mpi_barrier, pprint, MpiTimer, mpi_comm
+from dosna.util.mpi import MpiTimer, mpi_barrier, mpi_comm, mpi_root, pprint
 
 log.getLogger().setLevel(log.CRITICAL)
 
