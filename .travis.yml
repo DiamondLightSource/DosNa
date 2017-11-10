@@ -11,23 +11,28 @@ addons:
       - libhdf5-serial-dev
       - ceph-common
       - librados-dev
+      - libhdf5-dev
+      - libopenmpi-dev
+      - openmpi-bin
 
 python:
   - 2.7
   - 3.3
 
 env:
-  global:
-    - ENGINE=cpu
-  matrix:
-    - BACKEND=ram
-    - BACKEND=hdf5
-    - BACKEND=ceph
+  - ENGINE=cpu BACKEND=ram
+  - ENGINE=cpu BACKEND=hdf5
+  - ENGINE=cpu BACKEND=ceph
+  - ENGINE=mpi BACKEND=ram
+  - ENGINE=mpi BACKEND=hdf5
+  - ENGINE=mpi BACKEND=ceph
 
 matrix:
   exclude:
     - python: 3.3
-      env: BACKEND=ceph
+      env: ENGINE=cpu BACKEND=ceph
+    - python: 3.3
+      env: ENGINE=mpi BACKEND=ceph
 
 install:
   - pip install -r requirements.txt
