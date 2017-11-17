@@ -62,7 +62,8 @@ class MpiConnection(EngineConnection, MpiMixin):
         return MpiDataset(dataset, self.mpi_comm)
 
     def del_dataset(self, name):
-        self.mpi_barrier()
+        dataset = self.get_dataset(name)
+        dataset.clear()
         if self.mpi_is_root:
             self.instance.del_dataset(name)
         self.mpi_barrier()
