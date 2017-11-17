@@ -75,7 +75,8 @@ class MemDataset(BackendDataset):
 
     def create_chunk(self, idx, data=None, slices=None):
         if self.has_chunk(idx):
-            raise Exception('DataChunk `{}` already exists'.format(idx))
+            raise Exception('DataChunk `{}{}` already exists'.format(self.name,
+                                                                     idx))
 
         self.data_chunks[idx] = None
 

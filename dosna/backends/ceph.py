@@ -124,7 +124,8 @@ class CephDataset(BackendDataset):
 
     def create_chunk(self, idx, data=None, slices=None):
         if self.has_chunk(idx):
-            raise Exception('DataChunk `{}` already exists'.format(idx))
+            raise Exception('DataChunk `{}{}` already exists'.format(self.name,
+                                                                     idx))
         name = self._idx2name(idx)
         dtype = self.dtype
         shape = self.chunk_size
