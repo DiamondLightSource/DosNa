@@ -49,13 +49,15 @@ class MpiConnection(EngineConnection, MpiMixin):
                        data=None, chunks=None):
 
         if self.mpi_is_root:
-            self.instance.create_dataset(name, shape, dtype, fillvalue, data,
-                                         chunks)
+            dataset = self.instance.create_dataset(name, shape, dtype,
+                                                   fillvalue, data, chunks)
         self.mpi_barrier()
-        dataset = self.get_dataset(name)
+        if not self.mpi_is_root:
+            dataset = self.instance.get_dataset(name)
+        engine_dataset = MpiDataset(dataset, self.mpi_comm)
         if data is not None:
-            dataset.load(data)
-        return dataset
+            engine_dataset.load(data)
+        return engine_dataset
 
     def get_dataset(self, name):
         dataset = self.instance.get_dataset(name)
@@ -134,7 +136,8 @@ class MpiDataset(CpuDataset, MpiMixin):
                 dtype=self.dtype, chunks=self.chunk_size,
                 fillvalue=self.fillvalue)
         self.mpi_barrier()
-        out = self.instance.connection.get_dataset(output_name)
+        if not self.mpi_is_root:
+            out = self.instance.connection.get_dataset(output_name)
         return MpiDataset(out, self.mpi_comm)
 
 
