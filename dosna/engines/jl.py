@@ -96,9 +96,6 @@ class JoblibDataset(CpuDataset):
             for idx in range(self.total_chunks)
         )
 
-    def delete(self):
-        self.instance.connection.del_dataset(self.name)
-
     def load(self, data):
         if data.shape != self.shape:
             raise Exception('Data shape does not match')

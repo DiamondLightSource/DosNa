@@ -63,9 +63,6 @@ class CpuDataset(EngineDataset):
             idx = self._idx_from_flat(idx)
             self.del_chunk(idx)
 
-    def delete(self):
-        self.instance.connection.del_dataset(self.name)
-
     def load(self, data):
         if data.shape != self.shape:
             raise Exception('Data shape does not match')
