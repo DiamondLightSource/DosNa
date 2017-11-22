@@ -245,7 +245,7 @@ for i, DS in enumerate(DATA_SIZE):
                     dout[i, j, 2, k] = t2
 
             with MpiTimer('Data removed') as t:
-                ds.delete()
+                dataset.delete()
 
     f.close()
 if mpi_root():
