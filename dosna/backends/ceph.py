@@ -55,7 +55,6 @@ class CephConnection(BackendConnection):
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunks=None):
-
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception('Provide `shape` and `dtype` or `data`')
         if self.has_dataset(name):
@@ -70,6 +69,9 @@ class CephConnection(BackendConnection):
         else:
             csize = chunks
         chunks_needed = (np.ceil(np.asarray(shape, float) / csize)).astype(int)
+
+        log.debug('creating dataset %s with shape:%s chunks:%s '
+                  'chunks_needed:%s', name, shape, chunks, chunks_needed)
 
         self.ioctx.write(name, _SIGNATURE)
         self.ioctx.set_xattr(name, 'shape', shape2str(shape))
@@ -89,10 +91,12 @@ class CephConnection(BackendConnection):
         shape = str2shape(self.ioctx.get_xattr(name, 'shape'))
         dtype = self.ioctx.get_xattr(name, 'dtype')
         fillvalue = int(self.ioctx.get_xattr(name, 'fillvalue'))
-        chunks = str2shape(self.ioctx.get_xattr(name, 'chunks'))
+        chunks_grid = str2shape(self.ioctx.get_xattr(name, 'chunks'))
         chunk_size = str2shape(self.ioctx.get_xattr(name, 'chunk_size'))
         dataset = CephDataset(self, name, shape, dtype, fillvalue,
-                              chunks, chunk_size)
+                              chunks_grid, chunk_size)
+        log.debug("getting dataset %s with shape:%s chunks_grid:%s "
+                  "chunk_size:%s", name, shape, chunks_grid, chunk_size)
         return dataset
 
     def has_dataset(self, name):
@@ -137,6 +141,7 @@ class CephDataset(BackendDataset):
         return CephDataChunk(self, idx, name, shape, dtype, fillvalue)
 
     def get_chunk(self, idx):
+        log.debug('getting chunk %s/%s', self.name, idx)
         if self.has_chunk(idx):
             name = self._idx2name(idx)
             dtype = self.dtype
