@@ -11,7 +11,12 @@ from os.path import join
 
 import h5py as h5
 import numpy as np
-from scipy.misc import imsave
+
+try:
+    from scipy.misc import imsave
+except ImportError:
+    pass
+
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 import dosna as dn
@@ -154,8 +159,15 @@ def convolve1(ds, sigma):
                     ds3d_[zS:zE, yS:yE, xS:xE] = out
         mpi_barrier()
 
-    imsave(join(OUT_PATH, 'conv3d_{}-{}-{}.png'.format(
-        mpi_size(), ds.shape[0], ds.chunk_size[0])), ds3d_[ds.shape[0] // 2])
+    if mpi_root():
+        try:
+            imsave(join(OUT_PATH, 'conv3d_{}-{}-{}.png'.format(
+                   mpi_size(), ds.shape[0], ds.chunk_size[0])),
+                   ds3d_[ds.shape[0] // 2])
+        except NameError:
+            pass
+    mpi_barrier()
+
     ds3d_.delete()
 
     return T.time
@@ -208,8 +220,14 @@ def convolve2(ds, sigma):
 
         mpi_barrier()
 
-    imsave(join(OUT_PATH, 'conv3x1d_{}-{}-{}.png'.format(
-        mpi_size(), ds.shape[0], ds.chunk_size[0])), ds3_[ds.shape[0] // 2])
+    if mpi_root():
+        try:
+            imsave(join(OUT_PATH, 'conv3x1d_{}-{}-{}.png'.format(
+                   mpi_size(), ds.shape[0], ds.chunk_size[0])),
+                   ds3_[ds.shape[0] // 2])
+        except NameError:
+            pass
+    mpi_barrier()
 
     ds1_.delete()
     ds2_.delete()
