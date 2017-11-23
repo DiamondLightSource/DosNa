@@ -22,7 +22,7 @@ class MemConnection(BackendConnection):
         self.datasets = {}
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunks=None):
+                       data=None, chunk_size=None):
 
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception('Provide `shape` and `dtype` or `data`')
@@ -33,16 +33,16 @@ class MemConnection(BackendConnection):
             shape = data.shape
             dtype = data.dtype
 
-        if chunks is None:
-            csize = shape
-        else:
-            csize = chunks
-        chunks_needed = (np.ceil(np.asarray(shape, float) / csize)).astype(int)
+        if chunk_size is None:
+            chunk_size = shape
+
+        chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size))\
+            .astype(int)
 
         log.debug('Creating Dataset `%s`', name)
         self.datasets[name] = None  # Key `name` has to exist
-        dataset = MemDataset(self, name, shape, dtype, fillvalue,
-                             chunks_needed, csize)
+        dataset = MemDataset(self, name, shape, dtype, fillvalue, chunk_grid,
+                             chunk_size)
         self.datasets[name] = dataset
         return dataset
 
@@ -63,14 +63,15 @@ class MemConnection(BackendConnection):
 
 class MemDataset(BackendDataset):
 
-    def __init__(self, pool, name, shape, dtype, fillvalue, chunks, csize):
+    def __init__(self, pool, name, shape, dtype, fillvalue, chunk_grid,
+                 chunk_size):
         super(MemDataset, self).__init__(pool, name, shape, dtype, fillvalue,
-                                         chunks, csize)
+                                         chunk_grid, chunk_size)
         self.data_chunks = {}
         self._populate_chunks()
 
     def _populate_chunks(self):
-        for idx in np.ndindex(*self.chunks):
+        for idx in np.ndindex(*self.chunk_grid):
             self.create_chunk(idx)
 
     def create_chunk(self, idx, data=None, slices=None):

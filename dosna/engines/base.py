@@ -34,9 +34,9 @@ class BackendWrapper(object):
 class EngineConnection(BackendWrapper):
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunks=None):
+                       data=None, chunk_size=None):
         self.instance.create_dataset(name, shape, dtype, fillvalue,
-                                     data, chunks)
+                                     data, chunk_size)
         dataset = self.get_dataset(name)
         if data is not None:
             dataset.load(data)

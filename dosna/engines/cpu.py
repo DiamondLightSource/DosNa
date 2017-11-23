@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """cpu """
+import logging
 
 import numpy as np
 
@@ -7,6 +8,8 @@ from dosna.backends import get_backend
 from dosna.engines import Engine
 from dosna.engines.base import EngineConnection, EngineDataChunk, EngineDataset
 from six.moves import range
+
+log = logging.getLogger(__name__)
 
 
 class CpuConnection(EngineConnection):
@@ -31,6 +34,7 @@ class CpuDataset(EngineDataset):
         return CpuDataChunk(chunk)
 
     def get_data(self, slices=None):
+        log.debug("getting data at %s[%s]", self.name, slices)
         slices, squeeze_axis = self._process_slices(slices, squeeze=True)
         tshape = tuple(x.stop - x.start for x in slices)
         chunk_iterator = self._chunk_slice_iterator(slices, self.ndim)
@@ -44,6 +48,7 @@ class CpuDataset(EngineDataset):
         return output
 
     def set_data(self, values, slices=None):
+        log.debug("setting data at %s[%s]", self.name, slices)
         if slices is None:
             return self.load(values)
 
@@ -89,7 +94,7 @@ class CpuDataset(EngineDataset):
     def clone(self, output_name):
         out = self.instance.connection.create_dataset(
             output_name, shape=self.shape,
-            dtype=self.dtype, chunks=self.chunk_size,
+            dtype=self.dtype, chunk_size=self.chunk_size,
             fillvalue=self.fillvalue)
         return CpuDataset(out)
 

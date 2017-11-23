@@ -9,34 +9,38 @@ import numpy as np
 import dosna as dn
 from dosna.tests import configure_logger
 
+try:
+    import dosna.util.mpi as mpiutil
+except ImportError:
+    pass
+
 log = logging.getLogger(__name__)
 
+BACKEND = 'ram'
+ENGINE = 'cpu'
+CONNECTION_CONFIG = {}
 
 class DatasetTest(unittest.TestCase):
     """
     Test dataset actions
     """
 
-    BACKEND = 'ram'
-    ENGINE = 'cpu'
-    CONNECTION_CONFIG = {}
-
     def setUp(self):
-        self.handler = logging.StreamHandler(sys.stdout)
-        log.addHandler(self.handler)
-        log.info('DatasetTest: %s, %s, %s',
-                 self.BACKEND, self.ENGINE, self.CONNECTION_CONFIG)
+        if ENGINE == 'mpi' and mpiutil.mpi_size() > 1:
+            self.skipTest("This should not test concurrent access")
 
-        dn.use(backend=self.BACKEND, engine=self.ENGINE)
-        self.connection_handle = dn.Connection(**self.CONNECTION_CONFIG)
+        log.info('DatasetTest: %s, %s, %s',
+                 BACKEND, ENGINE, CONNECTION_CONFIG)
+
+        dn.use(backend=BACKEND, engine=ENGINE)
+        self.connection_handle = dn.Connection(**CONNECTION_CONFIG)
         self.connection_handle.connect()
         self.fake_dataset = 'NotADataset'
         self.data = np.random.rand(100, 100, 100)
         self.dataset = self.connection_handle.create_dataset(
-            self.fake_dataset, data=self.data, chunks=(32, 32, 32))
+            self.fake_dataset, data=self.data, chunk_size=(32, 32, 32))
 
     def tearDown(self):
-        log.removeHandler(self.handler)
         if self.connection_handle.has_dataset(self.fake_dataset):
             self.connection_handle.del_dataset(self.fake_dataset)
         self.connection_handle.disconnect()
@@ -47,7 +51,7 @@ class DatasetTest(unittest.TestCase):
             'NonExistantDataset'))
 
     def test_number_chunks(self):
-        self.assertSequenceEqual(list(self.dataset.chunks), [4, 4, 4])
+        self.assertSequenceEqual(list(self.dataset.chunk_grid), [4, 4, 4])
 
     def test_number_chunks_slicing(self):
         slices = [
@@ -123,10 +127,11 @@ def main():
     args, unknown_args = parser.parse_known_args()
     sys.argv = [sys.argv[0]] + unknown_args
 
-    DatasetTest.BACKEND = args.backend
-    DatasetTest.ENGINE = args.engine
-    DatasetTest.CONNECTION_CONFIG["name"] = args.connection
-    DatasetTest.CONNECTION_CONFIG.update(
+    global BACKEND, ENGINE, CONNECTION_CONFIG
+    BACKEND = args.backend
+    ENGINE = args.engine
+    CONNECTION_CONFIG["name"] = args.connection
+    CONNECTION_CONFIG.update(
         dict(item.split('=') for item in args.connection_options))
     unittest.main(verbosity=2)
 

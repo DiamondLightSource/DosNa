@@ -44,7 +44,7 @@ class H5Connection(BackendConnection, DirectoryTreeMixin):
         return os.path.join(self.relpath(name), _DATASET_METADATA_FILENAME)
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunks=None):
+                       data=None, chunk_size=None):
 
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception('Provide `shape` and `dtype` or `data`')
@@ -56,11 +56,10 @@ class H5Connection(BackendConnection, DirectoryTreeMixin):
             shape = data.shape
             dtype = data.dtype
 
-        if chunks is None:
+        if chunk_size is None:
             chunk_size = shape
-        else:
-            chunk_size = chunks
-        chunks_needed = (np.ceil(np.asarray(shape, float) / chunk_size))\
+
+        chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size))\
             .astype(int)
 
         path = self.relpath(name)
@@ -70,13 +69,13 @@ class H5Connection(BackendConnection, DirectoryTreeMixin):
             file_handle.attrs['shape'] = shape
             file_handle.attrs['dtype'] = dtype2str(dtype)
             file_handle.attrs['fillvalue'] = np.dtype(dtype).type(fillvalue)
-            file_handle.attrs['chunks'] = np.asarray(chunks_needed, dtype=int)
+            file_handle.attrs['chunk_grid'] = np.asarray(chunk_grid, dtype=int)
             file_handle.attrs['chunk_size'] = np.asarray(chunk_size, dtype=int)
 
         log.debug('Creating dataset at `%s`', path)
 
         dataset = H5Dataset(self, name, shape, dtype, fillvalue,
-                            chunks_needed, chunk_size)
+                            chunk_grid, chunk_size)
 
         return dataset
 
@@ -90,10 +89,10 @@ class H5Connection(BackendConnection, DirectoryTreeMixin):
             shape = tuple(file_handle.attrs['shape'])
             dtype = file_handle.attrs['dtype']
             fillvalue = file_handle.attrs['fillvalue']
-            chunks_needed = file_handle.attrs['chunks']
+            chunk_grid = file_handle.attrs['chunk_grid']
             chunk_size = file_handle.attrs['chunk_size']
 
-        return H5Dataset(self, name, shape, dtype, fillvalue, chunks_needed,
+        return H5Dataset(self, name, shape, dtype, fillvalue, chunk_grid,
                          chunk_size)
 
     def has_dataset(self, name):

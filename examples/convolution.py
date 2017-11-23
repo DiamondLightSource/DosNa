@@ -146,13 +146,13 @@ def convolve1(ds, sigma):
     with MpiTimer('Separable 3D convolution') as T:
         ds3d_ = ds.clone('gaussian_3d')
 
-        for z in range(mpi_rank(), ds.chunks[0], mpi_size()):
+        for z in range(mpi_rank(), ds.chunk_grid[0], mpi_size()):
             zS = z * ds.chunk_size[0]
             zE = min(zS + ds.chunk_size[0], ds.shape[0])
-            for y in range(ds.chunks[1]):
+            for y in range(ds.chunk_grid[1]):
                 yS = y * ds.chunk_size[1]
                 yE = min(yS + ds.chunk_size[1], ds.shape[1])
-                for x in range(ds.chunks[2]):
+                for x in range(ds.chunk_grid[2]):
                     xS = x * ds.chunk_size[2]
                     xE = min(xS + ds.chunk_size[2], ds.shape[2])
                     out = gaussian_filter(ds[zS:zE, yS:yE, xS:xE], sigma=sigma)
@@ -184,7 +184,7 @@ def convolve2(ds, sigma):
 
         ds1_ = ds.clone('gaussian_z')
 
-        for z in range(mpi_rank(), ds.chunks[0], mpi_size()):
+        for z in range(mpi_rank(), ds.chunk_grid[0], mpi_size()):
             zS = z * ds.chunk_size[0]
             zE = min(zS + ds.chunk_size[0], ds.shape[0])
             out = gaussian_filter1d(ds[zS:zE], sigma=sigma, axis=0)
@@ -198,7 +198,7 @@ def convolve2(ds, sigma):
 
         ds2_ = ds.clone('gaussian_y')
 
-        for y in range(mpi_rank(), ds.chunks[1], mpi_size()):
+        for y in range(mpi_rank(), ds.chunk_grid[1], mpi_size()):
             yS = y * ds.chunk_size[1]
             yE = min(yS + ds.chunk_size[1], ds.shape[1])
             out = gaussian_filter1d(ds1_[:, yS:yE], sigma=sigma, axis=1)
@@ -212,7 +212,7 @@ def convolve2(ds, sigma):
 
         ds3_ = ds.clone('gaussian_x')
 
-        for x in range(mpi_rank(), ds.chunks[2], mpi_size()):
+        for x in range(mpi_rank(), ds.chunk_grid[2], mpi_size()):
             xS = x * ds.chunk_size[2]
             xE = min(xS + ds.chunk_size[2], ds.shape[2])
             out = gaussian_filter1d(ds2_[..., xS:xE], sigma=sigma, axis=2)
@@ -247,11 +247,11 @@ for i, DS in enumerate(DATA_SIZE):
 
     for j, CS in enumerate(CHUNK_SIZE):
         with dn.Connection(**CONNECTION_CONFIG) as connection:
-            pprint('Loading Data -- shape: {} chunks: {}'
+            pprint('Loading Data -- shape: {} chunk_size: {}'
                    .format(DS, CS))
             with MpiTimer('Data loaded') as t:
                 dataset = connection.create_dataset('data', data=data,
-                                               chunks=(CS, CS, CS))
+                                               chunk_size=(CS, CS, CS))
 
             for k in range(NTESTS):
                 t1 = convolve1(dataset, SIGMA)

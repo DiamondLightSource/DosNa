@@ -46,11 +46,11 @@ class MpiConnection(EngineConnection, MpiMixin):
             log.warning('MPI engine will work unexpectedly with RAM backend')
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunks=None):
+                       data=None, chunk_size=None):
 
         if self.mpi_is_root:
             dataset = self.instance.create_dataset(name, shape, dtype,
-                                                   fillvalue, data, chunks)
+                                                   fillvalue, data, chunk_size)
         self.mpi_barrier()
         if not self.mpi_is_root:
             dataset = self.instance.get_dataset(name)
@@ -133,7 +133,7 @@ class MpiDataset(CpuDataset, MpiMixin):
         if self.mpi_is_root:
             out = self.instance.connection.create_dataset(
                 output_name, shape=self.shape,
-                dtype=self.dtype, chunks=self.chunk_size,
+                dtype=self.dtype, chunk_size=self.chunk_size,
                 fillvalue=self.fillvalue)
         self.mpi_barrier()
         if not self.mpi_is_root:

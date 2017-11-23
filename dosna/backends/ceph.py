@@ -54,7 +54,7 @@ class CephConnection(BackendConnection):
         return self._ioctx
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunks=None):
+                       data=None, chunk_size=None):
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception('Provide `shape` and `dtype` or `data`')
         if self.has_dataset(name):
@@ -64,24 +64,24 @@ class CephConnection(BackendConnection):
             shape = data.shape
             dtype = data.dtype
 
-        if chunks is None:
-            csize = shape
-        else:
-            csize = chunks
-        chunks_needed = (np.ceil(np.asarray(shape, float) / csize)).astype(int)
+        if chunk_size is None:
+            chunk_size = shape
 
-        log.debug('creating dataset %s with shape:%s chunks:%s '
-                  'chunks_needed:%s', name, shape, chunks, chunks_needed)
+        chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size))\
+            .astype(int)
+
+        log.debug('creating dataset %s with shape:%s chunk_size:%s '
+                  'chunk_grid:%s', name, shape, chunk_size, chunk_grid)
 
         self.ioctx.write(name, _SIGNATURE)
         self.ioctx.set_xattr(name, 'shape', shape2str(shape))
         self.ioctx.set_xattr(name, 'dtype', dtype2str(dtype))
         self.ioctx.set_xattr(name, 'fillvalue', repr(fillvalue))
-        self.ioctx.set_xattr(name, 'chunks', shape2str(chunks_needed))
-        self.ioctx.set_xattr(name, 'chunk_size', shape2str(csize))
+        self.ioctx.set_xattr(name, 'chunk_grid', shape2str(chunk_grid))
+        self.ioctx.set_xattr(name, 'chunk_size', shape2str(chunk_size))
 
         dataset = CephDataset(self, name, shape, dtype, fillvalue,
-                              chunks_needed, csize)
+                              chunk_grid, chunk_size)
 
         return dataset
 
@@ -91,7 +91,7 @@ class CephConnection(BackendConnection):
         shape = str2shape(self.ioctx.get_xattr(name, 'shape'))
         dtype = self.ioctx.get_xattr(name, 'dtype')
         fillvalue = int(self.ioctx.get_xattr(name, 'fillvalue'))
-        chunks_grid = str2shape(self.ioctx.get_xattr(name, 'chunks'))
+        chunks_grid = str2shape(self.ioctx.get_xattr(name, 'chunk_grid'))
         chunk_size = str2shape(self.ioctx.get_xattr(name, 'chunk_size'))
         dataset = CephDataset(self, name, shape, dtype, fillvalue,
                               chunks_grid, chunk_size)

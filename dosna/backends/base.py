@@ -75,8 +75,8 @@ class BackendConnection(object):
 
 class BackendDataset(object):
 
-    def __init__(self, connection, name, shape, dtype, fillvalue, chunks,
-                 csize):
+    def __init__(self, connection, name, shape, dtype, fillvalue, chunk_grid,
+                 chunk_size):
         if not connection.has_dataset(name):
             raise Exception('Wrong initialization of a Dataset')
 
@@ -86,9 +86,9 @@ class BackendDataset(object):
         self._dtype = dtype
         self._fillvalue = fillvalue
 
-        self._chunks = chunks
-        self._chunk_size = csize
-        self._total_chunks = np.prod(chunks)
+        self._chunk_grid = chunk_grid
+        self._chunk_size = chunk_size
+        self._total_chunks = np.prod(chunk_grid)
         self._ndim = len(self._shape)
 
     @property
@@ -116,8 +116,8 @@ class BackendDataset(object):
         return self._fillvalue
 
     @property
-    def chunks(self):
-        return self._chunks
+    def chunk_grid(self):
+        return self._chunk_grid
 
     @property
     def chunk_size(self):
@@ -156,7 +156,7 @@ class BackendDataset(object):
     # Utility methods used by all backends and engines
 
     def _idx_from_flat(self, idx):
-        return tuple(map(int, np.unravel_index(idx, self.chunks)))
+        return tuple(map(int, np.unravel_index(idx, self.chunk_grid)))
 
     def _local_chunk_bounds(self, idx):
         return tuple((slice(0, min((i + 1) * s, self.shape[j]) - i * s)
@@ -237,11 +237,12 @@ class BackendDataset(object):
         gslices = []
 
         chunk_size = self.chunk_size
-        chunks = self.chunks
+        chunk_grid = self.chunk_grid
 
         for index, slc in enumerate(slices):
             sstart = slc.start // chunk_size[index]
-            sstop = min((slc.stop - 1) // chunk_size[index], chunks[index] - 1)
+            sstop = min((slc.stop - 1) // chunk_size[index],
+                        chunk_grid[index] - 1)
             if sstop < 0:
                 sstop = 0
 
