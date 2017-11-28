@@ -178,12 +178,19 @@ class CephDataChunk(BackendDataChunk):
         data.shape = self.shape
         return data[slices]
 
+    def slices_to_shape(self, slices):
+        result = []
+        for slice_ in slices:
+            result.append(slice_.stop - slice_.start)
+        return tuple(result)
+
     def set_data(self, values, slices=None):
-        if slices is None:
-            slices = slice(None)
-        cdata = self.get_data()
-        cdata[slices] = values
-        self.write_full(cdata.tobytes())
+        if slices is None or self.slices_to_shape(slices) == self.shape:
+            self.write_full(values.tobytes())
+        else:
+            cdata = self.get_data()
+            cdata[slices] = values
+            self.write_full(cdata.tobytes())
 
     def write_full(self, data):
         self.ioctx.write_full(self.name, data)
