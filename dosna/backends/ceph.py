@@ -91,12 +91,10 @@ class CephConnection(BackendConnection):
         shape = str2shape(self.ioctx.get_xattr(name, 'shape'))
         dtype = self.ioctx.get_xattr(name, 'dtype')
         fillvalue = int(self.ioctx.get_xattr(name, 'fillvalue'))
-        chunks_grid = str2shape(self.ioctx.get_xattr(name, 'chunk_grid'))
+        chunk_grid = str2shape(self.ioctx.get_xattr(name, 'chunk_grid'))
         chunk_size = str2shape(self.ioctx.get_xattr(name, 'chunk_size'))
         dataset = CephDataset(self, name, shape, dtype, fillvalue,
-                              chunks_grid, chunk_size)
-        log.debug("getting dataset %s with shape:%s chunks_grid:%s "
-                  "chunk_size:%s", name, shape, chunks_grid, chunk_size)
+                              chunk_grid, chunk_size)
         return dataset
 
     def has_dataset(self, name):
@@ -108,6 +106,7 @@ class CephConnection(BackendConnection):
         return valid
 
     def del_dataset(self, name):
+        log.debug("Removing dataset %s", name)
         if self.has_dataset(name):
             self.ioctx.remove_object(name)
         else:
@@ -141,7 +140,6 @@ class CephDataset(BackendDataset):
         return CephDataChunk(self, idx, name, shape, dtype, fillvalue)
 
     def get_chunk(self, idx):
-        log.debug('getting chunk %s/%s', self.name, idx)
         if self.has_chunk(idx):
             name = self._idx2name(idx)
             dtype = self.dtype

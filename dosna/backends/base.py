@@ -55,7 +55,7 @@ class BackendConnection(object):
         return self.has_dataset(name)
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunks=None):
+                       data=None, chunk_size=None):
         raise NotImplementedError('`create_dataset` not implemented '
                                   'for this backend')
 
