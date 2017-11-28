@@ -21,6 +21,13 @@ BACKEND = 'ram'
 ENGINE = 'cpu'
 CONNECTION_CONFIG = {}
 
+DATA_SIZE = (100, 100, 100)
+DATA_CHUNK_SIZE = (32, 32, 32)
+
+SEQUENTIAL_TEST_PARTS = 3
+DATASET_NUMBER_RANGE = (-10000, 10000)
+
+
 class DatasetTest(unittest.TestCase):
     """
     Test dataset actions
@@ -37,9 +44,11 @@ class DatasetTest(unittest.TestCase):
         self.connection_handle = dn.Connection(**CONNECTION_CONFIG)
         self.connection_handle.connect()
         self.fake_dataset = 'NotADataset'
-        self.data = np.random.rand(100, 100, 100)
+        self.data = np.random.random_integers(DATASET_NUMBER_RANGE[0],
+                                              DATASET_NUMBER_RANGE[1],
+                                              DATA_SIZE)
         self.dataset = self.connection_handle.create_dataset(
-            self.fake_dataset, data=self.data, chunk_size=(32, 32, 32))
+            self.fake_dataset, data=self.data, chunk_size=DATA_CHUNK_SIZE)
 
     def tearDown(self):
         if self.connection_handle.has_dataset(self.fake_dataset):
