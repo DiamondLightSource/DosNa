@@ -117,6 +117,17 @@ class DatasetTest(unittest.TestCase):
         self.dataset.apply(lambda x: x + 1)
         np.testing.assert_array_equal(self.dataset[...], self.data + 1)
 
+    def test_sequential_set(self):
+        for part in range(SEQUENTIAL_TEST_PARTS):
+            x_start = part * DATA_SIZE[0] // SEQUENTIAL_TEST_PARTS
+            if part == SEQUENTIAL_TEST_PARTS - 1:
+                x_stop = DATA_SIZE[0]
+            else:
+                x_stop = (part + 1) * DATA_SIZE[0] // SEQUENTIAL_TEST_PARTS
+            self.dataset[x_start:x_stop] = \
+                self.data[x_start:x_stop] * 3 + 5
+        np.testing.assert_array_equal(self.dataset[...], self.data * 3 + 5)
+
     def test_del_non_existing_dataset(self):
         with self.assertRaises(DatasetNotFoundError):
             self.connection_handle.del_dataset('ThisDoesNotExist')
