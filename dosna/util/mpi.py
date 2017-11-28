@@ -23,6 +23,10 @@ def mpi_rank(comm=None):
     return comm.Get_rank()
 
 
+def mpi_is_root(comm=None):
+    return mpi_rank(comm) == 0
+
+
 def mpi_size(comm=None):
     comm = comm or mpi_comm()
     return comm.Get_size()
@@ -63,3 +67,15 @@ class MpiTimer(object):
         self.time = self.tend - self.tstart
         pprint('%s -- Elapsed: %.4f seconds' % (self.name, self.time),
                rank=self.rank)
+
+
+class MpiMixin(object):
+
+    def __init__(self, mpi_comm_):
+        self.mpi_comm = mpi_comm_
+        self.mpi_size = self.mpi_comm.Get_size()
+        self.mpi_rank = self.mpi_comm.Get_rank()
+        self.mpi_is_root = self.mpi_rank == 0
+
+    def mpi_barrier(self):
+        self.mpi_comm.Barrier()

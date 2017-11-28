@@ -11,21 +11,10 @@ from dosna.backends import get_backend
 from dosna.engines import Engine
 from dosna.engines.base import EngineConnection, EngineDataChunk
 from dosna.engines.cpu import CpuDataset
+from dosna.util.mpi import MpiMixin
 from six.moves import range
 
 log = logging.getLogger(__name__)
-
-
-class MpiMixin(object):
-
-    def __init__(self, mpi_comm):
-        self.mpi_comm = mpi_comm
-        self.mpi_size = self.mpi_comm.Get_size()
-        self.mpi_rank = self.mpi_comm.Get_rank()
-        self.mpi_is_root = self.mpi_rank == 0
-
-    def mpi_barrier(self):
-        self.mpi_comm.Barrier()
 
 
 class MpiConnection(EngineConnection, MpiMixin):
