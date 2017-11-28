@@ -10,7 +10,7 @@ import numpy as np
 
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
-                                 BackendDataset)
+                                 BackendDataset, DatasetNotFoundError)
 from dosna.util import DirectoryTreeMixin, dtype2str
 
 _DATASET_METADATA_FILENAME = 'dataset.h5'
@@ -81,7 +81,7 @@ class H5Connection(BackendConnection, DirectoryTreeMixin):
 
     def get_dataset(self, name):
         if not self.has_dataset(name):
-            raise Exception(
+            raise DatasetNotFoundError(
                 'Dataset at `%s` does not exist' % self.relpath(name))
 
         with h5.File(self._get_dataset_metadata_path(name),
@@ -102,7 +102,8 @@ class H5Connection(BackendConnection, DirectoryTreeMixin):
     def del_dataset(self, name):
         path = self.relpath(name)
         if not self.has_dataset(name):
-            raise Exception('Dataset at `{}` does not exist'.format(path))
+            raise DatasetNotFoundError(
+                'Dataset at `{}` does not exist'.format(path))
         log.debug('Removing Dataset at `%s`', path)
         shutil.rmtree(path)
 

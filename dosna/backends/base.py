@@ -328,3 +328,11 @@ class BackendDataChunk(object):
 
     def __setitem__(self, slices, values):
         self.set_data(values, slices=slices)
+
+
+class ConnectionError(Exception):
+    pass
+
+
+class DatasetNotFoundError(Exception):
+    pass

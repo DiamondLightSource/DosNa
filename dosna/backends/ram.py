@@ -7,7 +7,7 @@ import numpy as np
 
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
-                                 BackendDataset)
+                                 BackendDataset, DatasetNotFoundError)
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class MemConnection(BackendConnection):
 
     def get_dataset(self, name):
         if not self.has_dataset(name):
-            raise Exception('Dataset `%s` does not exist' % name)
+            raise DatasetNotFoundError('Dataset `%s` does not exist' % name)
         return self.datasets[name]
 
     def has_dataset(self, name):
@@ -56,7 +56,7 @@ class MemConnection(BackendConnection):
 
     def del_dataset(self, name):
         if not self.has_dataset(name):
-            raise Exception('Dataset `%s` does not exist' % name)
+            raise DatasetNotFoundError('Dataset `%s` does not exist' % name)
         log.debug('Removing Dataset `%s`', name)
         del self.datasets[name]
 

@@ -8,7 +8,8 @@ import numpy as np
 import rados
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
-                                 BackendDataset)
+                                 BackendDataset, ConnectionError,
+                                 DatasetNotFoundError)
 from dosna.util import dtype2str, shape2str, str2shape
 
 _SIGNATURE = "DosNa Dataset"
@@ -38,7 +39,8 @@ class CephConnection(BackendConnection):
 
     def connect(self):
         if self.connected:
-            raise Exception('Connection {} is already open'.format(self.name))
+            raise ConnectionError(
+                'Connection {} is already open'.format(self.name))
         self._cluster.connect(timeout=self._timeout)
         self._ioctx = self._cluster.open_ioctx(self.name)
         super(CephConnection, self).connect()
@@ -87,7 +89,7 @@ class CephConnection(BackendConnection):
 
     def get_dataset(self, name):
         if not self.has_dataset(name):
-            raise Exception('Dataset `%s` does not exist' % name)
+            raise DatasetNotFoundError('Dataset `%s` does not exist' % name)
         shape = str2shape(self.ioctx.get_xattr(name, 'shape'))
         dtype = self.ioctx.get_xattr(name, 'dtype')
         fillvalue = int(self.ioctx.get_xattr(name, 'fillvalue'))
@@ -110,7 +112,8 @@ class CephConnection(BackendConnection):
         if self.has_dataset(name):
             self.ioctx.remove_object(name)
         else:
-            raise Exception('Dataset `{}` does not exist'.format(name))
+            raise DatasetNotFoundError(
+                'Dataset `{}` does not exist'.format(name))
 
 
 class CephDataset(BackendDataset):

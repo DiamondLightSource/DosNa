@@ -7,6 +7,7 @@ import unittest
 import numpy as np
 
 import dosna as dn
+from dosna.backends.base import DatasetNotFoundError
 from dosna.tests import configure_logger
 
 try:
@@ -106,6 +107,14 @@ class DatasetTest(unittest.TestCase):
     def test_apply(self):
         self.dataset.apply(lambda x: x + 1)
         np.testing.assert_array_equal(self.dataset[...], self.data + 1)
+
+    def test_del_non_existing_dataset(self):
+        with self.assertRaises(DatasetNotFoundError):
+            self.connection_handle.del_dataset('ThisDoesNotExist')
+
+    def test_get_non_existing_dataset(self):
+        with self.assertRaises(DatasetNotFoundError):
+            self.connection_handle.get_dataset('ThisDoesNotExist')
 
 
 def main():
