@@ -37,6 +37,18 @@ class DatasetTest(unittest.TestCase):
     Test dataset actions
     """
 
+    connection_handle = None
+
+    @classmethod
+    def setUpClass(cls):
+        dn.use(backend=BACKEND, engine=ENGINE)
+        cls.connection_handle = dn.Connection(**CONNECTION_CONFIG)
+        cls.connection_handle.connect()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.connection_handle.disconnect()
+
     def setUp(self):
         if ENGINE == 'mpi' and mpi_size() > 1:
             self.skipTest("This should not test concurrent access")
@@ -44,9 +56,6 @@ class DatasetTest(unittest.TestCase):
         log.info('DatasetTest: %s, %s, %s',
                  BACKEND, ENGINE, CONNECTION_CONFIG)
 
-        dn.use(backend=BACKEND, engine=ENGINE)
-        self.connection_handle = dn.Connection(**CONNECTION_CONFIG)
-        self.connection_handle.connect()
         self.fake_dataset = 'NotADataset'
         self.data = np.random.random_integers(DATASET_NUMBER_RANGE[0],
                                               DATASET_NUMBER_RANGE[1],
@@ -57,7 +66,6 @@ class DatasetTest(unittest.TestCase):
     def tearDown(self):
         if self.connection_handle.has_dataset(self.fake_dataset):
             self.connection_handle.del_dataset(self.fake_dataset)
-        self.connection_handle.disconnect()
 
     def test_existing(self):
         self.assertTrue(self.connection_handle.has_dataset(self.fake_dataset))
@@ -143,6 +151,19 @@ class DatasetTest(unittest.TestCase):
 
 class MpiDatasetTest(unittest.TestCase):
 
+    connection_handle = None
+
+    @classmethod
+    def setUpClass(cls):
+        dn.use(backend=BACKEND, engine=ENGINE)
+        cls.connection_handle = dn.Connection(**CONNECTION_CONFIG)
+        cls.connection_handle.connect()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.connection_handle.disconnect()
+        cls.connection_handle = None
+
     def setUp(self):
         if ENGINE != "mpi" or mpi_size() < 2:
             self.skipTest("Test for engine mpi with several processes")
@@ -153,9 +174,6 @@ class MpiDatasetTest(unittest.TestCase):
         log.info('DatasetTest: %s, %s, %s',
                  BACKEND, ENGINE, CONNECTION_CONFIG)
 
-        dn.use(backend=BACKEND, engine=ENGINE)
-        self.connection_handle = dn.Connection(**CONNECTION_CONFIG)
-        self.connection_handle.connect()
         self.fake_dataset = 'NotADataset'
         data = None
         if mpi_is_root():
@@ -168,7 +186,6 @@ class MpiDatasetTest(unittest.TestCase):
 
     def tearDown(self):
         self.connection_handle.del_dataset(self.fake_dataset)
-        self.connection_handle.disconnect()
 
     def test_load_function(self):
         np.testing.assert_array_equal(self.dataset[...], self.data)

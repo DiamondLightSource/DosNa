@@ -18,29 +18,27 @@ class ConnectionTest(unittest.TestCase):
     BACKEND = 'ram'
     ENGINE = 'cpu'
     CONNECTION_CONFIG = {}
+    connection_handle = None
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         log.info('ConnectionTest: %s, %s, %s',
-                 self.BACKEND, self.ENGINE, self.CONNECTION_CONFIG)
+                 cls.BACKEND, cls.ENGINE, cls.CONNECTION_CONFIG)
 
-        dn.use(backend=self.BACKEND, engine=self.ENGINE)
-        self.connection_handle = dn.Connection(**self.CONNECTION_CONFIG)
-
-    def tearDown(self):
-        self.connection_handle.disconnect()
+        dn.use(backend=cls.BACKEND, engine=cls.ENGINE)
+        cls.connection_handle = dn.Connection(**cls.CONNECTION_CONFIG)
 
     def test_config(self):
         self.assertIn(self.BACKEND, dn.backends.AVAILABLE)
         self.assertIn(self.ENGINE, dn.engines.AVAILABLE)
 
     def test_connection(self):
-        connection_handle = dn.Connection(**self.CONNECTION_CONFIG)
-        self.assertIsNotNone(connection_handle)
-        self.assertFalse(connection_handle.connected)
-        connection_handle.connect()
-        self.assertTrue(connection_handle.connected)
-        connection_handle.disconnect()
-        self.assertFalse(connection_handle.connected)
+        self.assertIsNotNone(self.connection_handle)
+        self.assertFalse(self.connection_handle.connected)
+        self.connection_handle.connect()
+        self.assertTrue(self.connection_handle.connected)
+        self.connection_handle.disconnect()
+        self.assertFalse(self.connection_handle.connected)
 
 
 def main():
