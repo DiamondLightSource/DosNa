@@ -11,6 +11,7 @@ from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendDataset, ConnectionError,
                                  DatasetNotFoundError)
 from dosna.util import dtype2str, shape2str, str2shape
+from dosna.util.data import slices2shape
 
 _SIGNATURE = "DosNa Dataset"
 
@@ -178,14 +179,8 @@ class CephDataChunk(BackendDataChunk):
         data.shape = self.shape
         return data[slices]
 
-    def slices_to_shape(self, slices):
-        result = []
-        for slice_ in slices:
-            result.append(slice_.stop - slice_.start)
-        return tuple(result)
-
     def set_data(self, values, slices=None):
-        if slices is None or self.slices_to_shape(slices) == self.shape:
+        if slices is None or slices2shape(slices) == self.shape:
             self.write_full(values.tobytes())
         else:
             cdata = self.get_data()
