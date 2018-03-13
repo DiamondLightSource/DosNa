@@ -281,8 +281,6 @@ class BackendDataset(object):
 class BackendDataChunk(object):
 
     def __init__(self, dataset, idx, name, shape, dtype, fillvalue):
-        if not dataset.has_chunk(idx):
-            raise Exception('Wrong initialization of a DataChunk')
         self._dataset = dataset
         self._idx = idx
         self._name = name

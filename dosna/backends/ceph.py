@@ -137,11 +137,11 @@ class CephDataset(BackendDataset):
         dtype = self.dtype
         shape = self.chunk_size
         fillvalue = self.fillvalue
-        cdata = np.full(shape, fillvalue, dtype)
-        if data is not None:
-            cdata[slices] = data
-        self.ioctx.write_full(name, cdata.tobytes())
-        return CephDataChunk(self, idx, name, shape, dtype, fillvalue)
+        datachunk = CephDataChunk(self, idx, name, shape, dtype, fillvalue)
+        if data is None:
+            data = np.full(shape, fillvalue, dtype)
+        datachunk.set_data(data, slices)
+        return datachunk
 
     def get_chunk(self, idx):
         if self.has_chunk(idx):
