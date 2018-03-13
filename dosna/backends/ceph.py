@@ -174,8 +174,7 @@ class CephDataChunk(BackendDataChunk):
     def get_data(self, slices=None):
         if slices is None:
             slices = slice(None)
-        data_count = np.prod(self.shape)
-        data = np.fromstring(self.read(), dtype=self.dtype, count=data_count)
+        data = np.fromstring(self.read(), dtype=self.dtype, count=self.size)
         data.shape = self.shape
         return data[slices]
 
