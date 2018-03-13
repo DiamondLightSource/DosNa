@@ -29,8 +29,9 @@ Requirements:
      + ceph: [librados](http://docs.ceph.com/docs/master/rados/api/librados-intro/#getting-librados-for-python)
  - Engines:
      + cpu: none
-     + joblib: [joblib](https://pythonhosted.org/joblib/)
+     + jl: [joblib](https://pythonhosted.org/joblib/)
      + mpi: [mpi4py](http://mpi4py.scipy.org/)
+     + sage: [pyclovis](#notdefined)
  - Examples:
      + `convolutions.py`: [scipy](https://www.scipy.org/)
 
@@ -60,17 +61,16 @@ import numpy as np
 
 data = np.random.randn(100, 100, 100)
 
-C = dn.Cluster().connect()
-pool = C.create_pool('dosna_tutorial')
-ds = pool.create_dataset('data', data=data, chunks=(32,32,32))
+con = dn.Connection('dosna-tutorial')
+con.connect()
+ds = con.create_dataset('data', data=data, chunks=(32,32,32))
 
 print(ds[0, 0, :10])
 # [ 0.38475526 -1.02690848  0.88673305 -0.12398208  1.49337365 -1.91976844
 #   1.76940625  0.58314611  0.41391879 -0.34711908]
 assert np.allclose(ds[...], data) # True
 
-pool.close()
-C.disconnect()
+con.disconnect()
 ```
 
 The same example can also be run with context managers, for a more safe access to the clusters and pools without forgetting to `close` corresponding objects:
@@ -78,24 +78,23 @@ The same example can also be run with context managers, for a more safe access t
 ```python
 data = np.random.randn(100, 100, 100)
 
-with dn.Cluster() as C:
-    with C['dosna_tutorial'] as pool: # Note that __getitem__ retrieves an existing pool
-        ds = pool['data'] # Similarly, retrieve an existing dataset
-        print(ds[0, 0, :10])
-        # [ 0.38475526 -1.02690848  0.88673305 -0.12398208  1.49337365 -1.91976844
-        #   1.76940625  0.58314611  0.41391879 -0.34711908]
-        ds[36:80, 89:, :56] = data[36:80, 89:, :56]
-        assert np.allclose(ds[36:80, 89:, :56], data[36:80, 89:, :56])
+with dn.connection('dosna_tutorial') as con:
+    ds = con['data'] # Similarly, retrieve an existing dataset
+    print(ds[0, 0, :10])
+    # [ 0.38475526 -1.02690848  0.88673305 -0.12398208  1.49337365 -1.91976844
+    #   1.76940625  0.58314611  0.41391879 -0.34711908]
+    ds[36:80, 89:, :56] = data[36:80, 89:, :56]
+    assert np.allclose(ds[36:80, 89:, :56], data[36:80, 89:, :56])
 ```
 
-Note that the example above assumes that the pool `dosna_tutorial` already exists, as was created in the initial example. Pool objects are not expected to be created carelessly, instead, a single (or few) pools are expected to exist within an Object Store, and although DosNa could create/remove them, its intended usage is to make use of existing pools.
+Note that the example above assumes that the pool `dosna_tutorial` already exists. Pool objects are not expected to be created carelessly, instead, a single (or few) pools are expected to exist within an Object Store, and although DosNa could create/remove them, its intended usage is to make use of existing pools.
 
 ## Selecting Backend and Engines
 
 Selecting backend is very trivial and can be done at any point. However, the backend wont change for already created `Cluster` instances. New `Cluster` instances have to be created in order to see the change:
 
 ```python
-dn.use(backend='hdf5') # One of ['ram', 'hdf5', 'ceph']
+dn.use(backend='hdf5') # One of ['ram', 'hdf5', 'ceph', 'sage']
 ```
 
 Similarly, engines can be selected as:
@@ -115,7 +114,7 @@ dn.use(backend='hdf5', engine='mpi')
 
 ## Backends
 
-There are currently 2 test backends (`ram` and `hdf5`) and 1 backend wrapping a real object store (`ceph`).
+There are currently 2 test backends (`ram` and `hdf5`) and 2 backend wrapping a real object store (`ceph` and `sage`).
 
 ### Ram
 
@@ -144,7 +143,7 @@ There are 3 different backends: `cpu`, `joblib` and `mpi`.
 
 Although the name might be a bit misleading, it refers to a single process single thread instance. This is, a sequential program with no parallelization at all. It is the default engine as it is the easiest to test and maintain and will act as a simple wrapper along the selected Backend.
 
-### Joblib
+### Jl (Joblib)
 
 Will act as a local multi-threading or multi-processing backend. It accepts `njobs` and `jlbackend` parameters, the first one indicating the number of threads or processes to use while the second one indicating whether to use multi-threading or multi-processing (values for `jlbackend` are `threading` or `multiprocessing`).
 
@@ -164,15 +163,12 @@ Similar to joblib, it also extends `dataset.load`, `dataset.map` and `dataset.ap
 
 ## Creating a new Backend
 
-Backends extend the `BaseCluster`, `BasePool`, `BaseDataset` and `BaseDataChunk` templates present at `dosna.base` class to add functionality regarding the connection and creation of the respective objects in the new Object Store.
+Backends extend the `BaseCluster`, `BaseDataset` and `BaseDataChunk` templates present at `dosna.base` class to add functionality regarding the connection and creation of the respective objects in the new Object Store.
 
 The methods that have to be rewritten are:
 
-- Cluster
+- Connection
     + `connect` and `disconnect`
-    + `create_pool`,`get_pool`, `has_pool` and `del_pool`
-- Pool
-    + `open` and `close`
     + `create_dataset`, `get_dataset`, `has_dataset` and `del_dataset`
 - Dataset
     + `create_chunk`, `get_chunk`, `has_chunk` and `del_chunk`.
@@ -189,9 +185,7 @@ The Engine objects, as they act as wrappers, have to override all the create/del
 
 The list of methods modified to **properly wrap** a Backend are:
 
-- Cluster:
-    + `create_pool`, `get_pool`, `has_pool`, `del_pool`
-- Pool:
+- Connection
     + `create_dataset`, `get_dataset`, `has_dataset` and `del_dataset`
 - Dataset
     + `create_chunk`, `get_chunk`, `has_chunk` and `del_chunk`.
@@ -227,7 +221,7 @@ It is important to note that:
 
 - `ram` backend doesn't work properly with Joblib and MPI engines.
 - `hdf5` backend requires to provide an existing folder (and pool inside it) as `--cluster` parameter.
-- `ceph` backend requires a configuration file passed as `--cluster`.
+- `ceph` backend requires a configuration file passed as `--connection-options conffile=...`.
 
 And last, to run tests with `mpi` the script has to be called as:
 
