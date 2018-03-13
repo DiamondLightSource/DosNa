@@ -197,7 +197,7 @@ class CephDataChunk(BackendDataChunk):
 
     def read(self, length=None, offset=0):
         if length is None:
-            length = self.size * np.dtype(self.dtype).itemsize
+            length = self.byte_count
         return self.ioctx.read(self.name, length=length, offset=offset)
 
 

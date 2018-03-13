@@ -290,6 +290,7 @@ class BackendDataChunk(object):
         self._size = np.prod(shape)
         self._dtype = dtype
         self._fillvalue = fillvalue
+        self._byte_count = self.size * np.dtype(self.dtype).itemsize
 
     @property
     def dataset(self):
@@ -314,6 +315,10 @@ class BackendDataChunk(object):
     @property
     def fillvalue(self):
         return self._fillvalue
+
+    @property
+    def byte_count(self):
+        return self._byte_count
 
     def get_data(self, slices=None):
         raise NotImplementedError('`get_data` not implemented '
