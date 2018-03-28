@@ -22,7 +22,6 @@ def use_backend(backend):
         module_ = named_module('dosna.backends.{}'.format(backend))
         if hasattr(module_, '_backend'):
             log.debug('Switching backend to `%s`', module_._backend.name)
-            print 'use_backend: backend is %s' % module_._backend.name
             _current = module_._backend
         else:
             raise Exception(
@@ -33,7 +32,6 @@ def use_backend(backend):
 
 
 def get_backend(name=None):
-    
     if name is not None:
         use_backend(name)
     if _current is None:

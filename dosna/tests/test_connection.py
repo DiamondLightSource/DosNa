@@ -46,7 +46,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description='TestConnection')
     parser.add_argument('--backend', dest='backend', default='ram',
-                        help='Select backend (ram | hdf5 | ceph)')
+                        help='Select backend (ram | hdf5 | ceph | s3)')
     parser.add_argument('--engine', dest='engine', default='cpu',
                         help='Select engine (cpu | joblib | mpi)')
     parser.add_argument('--connection', dest='connection',
