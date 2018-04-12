@@ -4,7 +4,7 @@
 
 DosNa is intended to be a python wrapper to distribute N-dimensional arrays over an Object Store server. The main goal of DosNa is to provide easy and friendly seamless interface to store and manage N-Dimensional datasets over a remote Cloud.
 
-It is designed to be modular by defining a `Cluster -> Pool -> Dataset -> DataChunk` architecture, and supports multiple **Backends** and **Engines** that extend the base abstract model to add different functionality. Each Backend represents a different Object Store type and wraps DosNa to connect and interact with such Object Store. Engines, on the other hand, add different local (or remote) multi-threading and multi-process support. Engines act as clients to the selected Backend and parallelize (or enhance) some of the functions to access the remote data.
+It is designed to be modular by defining a `Connection -> Dataset -> DataChunk` architecture, and supports multiple **Backends** and **Engines** that extend the base abstract model to add different functionality. Each Backend represents a different Object Store type and wraps DosNa to connect and interact with such Object Store. Engines, on the other hand, add different local (or remote) multi-threading and multi-process support. Engines act as clients to the selected Backend and parallelize (or enhance) some of the functions to access the remote data.
 
 For example, the Ceph backend works by directly wrapping [`Cluster`](http://docs.ceph.com/docs/master/rados/api/python/#cluster-handle-api) and [`Pool/IOCtx`](http://docs.ceph.com/docs/master/rados/api/python/#input-output-context-api) API's from Librados and extending two new classes, `Dataset` and `DataChunk` that wrap and extend the behavior of a Librados [`Object`](http://docs.ceph.com/docs/master/rados/api/python/#object-interface) (that are only accessible through looping the `Pool`).
 
@@ -63,7 +63,7 @@ data = np.random.randn(100, 100, 100)
 
 con = dn.Connection('dosna-tutorial')
 con.connect()
-ds = con.create_dataset('data', data=data, chunks=(32,32,32))
+ds = con.create_dataset('data', data=data, chunk_size=(32,32,32))
 
 print(ds[0, 0, :10])
 # [ 0.38475526 -1.02690848  0.88673305 -0.12398208  1.49337365 -1.91976844
@@ -118,21 +118,40 @@ There are currently 2 test backends (`ram` and `hdf5`) and 2 backend wrapping a 
 
 ### Ram
 
-The `ram` (default) backend simulates an on-memory Object Store by defining the Cluster as a standard python dictionary. Similarly, a Pool acts as a nested dictionary and Dataset as another dictionary working as lookup table for all the existing chunks, with additional attributes such as the dataset shape, the dataset data type and the size of the chunks. DataChunks are then on-memory numpy arrays.
+The `ram` (default) backend simulates an on-memory Object Store by defining the Connection as a standard python dictionary. Similarly, a Dataset use a dictionary working as lookup table for all the existing chunks, with additional attributes such as the dataset shape, the dataset data type and the size of the chunks. DataChunks are then on-memory numpy arrays.
 
 This backend is the quickest one and very useful to test different functionality of DosNa. It is important to note that when used with MPI Engine it will have an unpredictable weird behavior, as each process will have its own copy of the data on memory. It will work with Joblib Engine though, as long as the `multithreading` option is selected.
 
+Connection parameters: \
+`Connection(name, directory='.')`
+
+- name (string): The name that identifies the connection.
+
 ### Hdf5
 
-Simulates an on-disk Object Store by defining the Cluster, Pool and Dataset as an on-disk folder tree. DataChunks are then automatically created HDF5 datasets inside the *Dataset* folder, containing a `/data` dataset inside them with the actual data.
+Simulates an on-disk Object Store by defining the Connection and Dataset as an on-disk folder tree. DataChunks are then automatically created HDF5 datasets inside the *Dataset* folder, containing a `/data` dataset inside them with the actual data.
 
-This backend is useful for testing multi-processing Engines (Joblib with `multiprocessing` and MPI) as the on-disk storage makes easy to distribute h`5py.Dataset` instances over the processes without corrupting the underlying data.
+This backend is useful for testing multi-processing Engines (Joblib with `multiprocessing` and MPI) as the on-disk storage makes easy to distribute `h5py.Dataset` instances over the processes without corrupting the underlying data.
 
 Although it is a *test* backend, it is probably very efficient and could replace standard `h5py` in extremely parallel scenarios, as DataChunks are separate HDF5 files and thus, it would allow for complete parallelization (both read and write) as long as no 2 processes access the same DataChunk simultaneously.
 
+Connection parameters: \
+`Connection(name, directory='.')`
+
+- name (string): The directory name used to hold the HDF5 datasets, the directory should exist.
+- directory (string): The path where the name will be searched. The current directory is used by default.
+
 ### Ceph
 
-Ceph backend connects to a Ceph Cluster. Cluster and Pool objects act as a connection to the cluster and the pools/streams within it. Creation or deletion of pools happens directly in the Object Store and similarly, a pool can create, retrieve or remove Datasets, represented as Ceph Objects with metadata and lookup information for the DataChunks that contain the appropiate data. DataChunks are another type of Ceph Objects that contain the numerical data in binarized numpy arrays format.
+Ceph backend connects to a Ceph Cluster. Connection object act as a connection to the cluster and a pool within it. Creation or deletion of pools happens directly in the Object Store and similarly, a pool can create, retrieve or remove Datasets, represented as Ceph Objects with metadata and lookup information for the DataChunks that contain the appropiate data. DataChunks are another type of Ceph Objects that contain the numerical data in binarized numpy arrays format.
+
+Connection parameters: \
+`Connection(name, conffile='ceph.conf', timeout=5, client_id=None)`
+
+- name (string): The ceph pool name, used for storing the dataset objects, the pool should exist.
+- conffile (string): The ceph configuration file path. Defaults to 'ceph.conf' in current directory.
+- timeout (int): The connection timeout. (Default: 5 seconds)
+- client_id: The ceph client id, e.g: client.user. (Default: None)
 
 ## Engines
 
@@ -157,7 +176,7 @@ Last, a whole numpy or h5py array can be loaded into an object store, by populat
 
 ### MPI
 
-The MPI backend is designed to work fully in parallel by using multiple processes. Different from Joblib, processes are not spawned when functions are called, instead, multiple processes exist from the start of the script and each of them contains a copy of the `Cluster` object. From there, MPI backend adds wrappers to most of the creation/deletion functions so that only the lead process (or root process, commonly the one with rank 0) creates or deletes the resource while the others wait for it. The engine also adds appropriate barriers when needed so that every process contains the same state of the remote Object Store. Last, the MPI Engine does not add parallelization over the slicing operation, as it is assumed that the script will be programmed so that different processes access different slices of the dataset. To that end, `Cluster`, `Pool` and `Dataset` objects contain `mpi_size`, `mpi_rank` and `mpi_is_root` attributes when used with the MPI engine.
+The MPI backend is designed to work fully in parallel by using multiple processes. Different from Joblib, processes are not spawned when functions are called, instead, multiple processes exist from the start of the script and each of them contains a copy of the `Cluster` object. From there, MPI backend adds wrappers to most of the creation/deletion functions so that only the lead process (or root process, commonly the one with rank 0) creates or deletes the resource while the others wait for it. The engine also adds appropriate barriers when needed so that every process contains the same state of the remote Object Store. Last, the MPI Engine does not add parallelization over the slicing operation, as it is assumed that the script will be programmed so that different processes access different slices of the dataset. To that end, `Connection` and `Dataset` objects contain `mpi_size`, `mpi_rank` and `mpi_is_root` attributes when used with the MPI engine.
 
 Similar to joblib, it also extends `dataset.load`, `dataset.map` and `dataset.apply` so that automatically each of the process takes care of different chunk.
 
@@ -191,7 +210,7 @@ The list of methods modified to **properly wrap** a Backend are:
     + `create_chunk`, `get_chunk`, `has_chunk` and `del_chunk`.
     + `clone` to clone a dataset (only its structure/chunk layout or also the underlying chunks)
 
-The list of methods that can be extended to **ad functionality** are:
+The list of methods that can be extended to **add functionality** are:
 
 - Dataset:
     + `get_data`, `set_data` to override slicing operations
@@ -220,8 +239,8 @@ Other parameters are available to setup backends, engines and pools appropriatel
 It is important to note that:
 
 - `ram` backend doesn't work properly with Joblib and MPI engines.
-- `hdf5` backend requires to provide an existing folder (and pool inside it) as `--cluster` parameter.
-- `ceph` backend requires a configuration file passed as `--connection-options conffile=...`.
+- `hdf5` backend requires to provide an existing folder as `--connection` parameter.
+- `ceph` backend requires a pool name passed as `--connection` and a configuration file passed as `--connection-options conffile=...`.
 
 And last, to run tests with `mpi` the script has to be called as:
 
