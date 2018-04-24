@@ -10,6 +10,10 @@ setup(
     author='Imanol Luengo',
     author_email='imanol.luengo@diamond.ac.uk',
     url='https://github.com/DiamondLightSource/DosNa',
+    package_data={
+        'dosna.support.pyclovis': ['*.pxd', '*.pxi', '*.pyx', '*.c', '*.h',
+                                   '*_config', '*.conf', '*.so']
+    },
     include_package_data=True,
     packages=find_packages() + ['dosna']
 )

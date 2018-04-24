@@ -65,7 +65,7 @@ Requirements:
      + cpu: none
      + jl: [joblib](https://pythonhosted.org/joblib/)
      + mpi: [mpi4py](http://mpi4py.scipy.org/)
-     + sage: [pyclovis](#notdefined)
+     + sage: [pyclovis](/dosna/support/pyclovis)
  - Examples:
      + `convolutions.py`: [scipy](https://www.scipy.org/)
 

@@ -10,7 +10,7 @@ from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  DatasetNotFoundError)
 from dosna.util import dtype2str, shape2str, str2shape
 from dosna.util.data import slices2shape
-from pyclovis import Clovis
+from dosna.support.pyclovis import Clovis
 
 log = logging.getLogger(__name__)
 
