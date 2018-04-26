@@ -10,7 +10,14 @@ from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  DatasetNotFoundError)
 from dosna.util import dtype2str, shape2str, str2shape
 from dosna.util.data import slices2shape
-from dosna.support.pyclovis import Clovis
+
+try:
+    from dosna.support.pyclovis import Clovis
+except ImportError:
+    raise ImportError("PyClovis module not found, "
+                      "you need to compile it, please run `make` in "
+                      "dosna/support/pyclovis, also note that PyClovis "
+                      "rely on the mero dynamic library")
 
 log = logging.getLogger(__name__)
 
