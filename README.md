@@ -229,6 +229,24 @@ in current directory.
 - timeout (int): The connection timeout. (Default: 5 seconds)
 - client_id: The ceph client id, e.g: client.user. (Default: None)
 
+### Sage
+
+Sage backend connects to a Sage Cluster. This backend depends on a
+cython module called `PyClovis`. If it's not available, please compile
+it by running `make` in `dosna/support/pyclovis`. This will work only if
+the mero libraries are installed.
+
+A dataset is mapped to a set of mero objects in which the object id is
+divided in two parts, the most significant 64 bits represents the
+dataset id and the least significant 64 bits represents the chunk id.
+
+ Connection parameters: \
+ `Connection(name, conffile='sage.conf')`
+
+ - name (string): The name that identifies the connection.
+- conffile (string): The sage configuration file path. Defaults to
+'sage.conf' in current directory.
+
 ## Engines
 
 There are 3 different backends: `cpu`, `joblib` and `mpi`.
