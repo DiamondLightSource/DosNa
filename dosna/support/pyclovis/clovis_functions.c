@@ -330,7 +330,7 @@ write_object(uint64_t high_id, uint64_t low_id, char *buffer, size_t length)
 {
 	int             rc = 0;
 	int             n_full_blocks = length / clovis_block_size;
-	int             n_blocks = n_full_blocks + (length % clovis_block_size);
+	int             n_blocks = n_full_blocks + (length % clovis_block_size != 0 ? 1 : 0);
 	struct m0_indexvec ext;
 	struct m0_bufvec data;
 	struct m0_bufvec attr;
