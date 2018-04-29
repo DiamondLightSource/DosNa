@@ -21,21 +21,23 @@ int test_write_and_read_object() {
 	char data[] = "abcdefghijklmnopqrstuvwxyz";
 	size_t data_len = strlen(data);
 	buff = (char *) malloc(data_len + 1);
-	uint64_t high_id = 1;
+	uint64_t high_id = 10;
 	uint64_t low_id = 16;
 	int rc;
 	printf("Creating ...\n");
 	rc = create_object(high_id, low_id);
-	assert(rc == 0);
+	if (rc) goto end1;
 	printf("Setting ...\n");
 	rc = write_object(high_id, low_id, data, data_len);
-	assert(rc == 0);
+	if (rc) goto end1;
 	printf("Reading ...\n");
 	rc = read_object(high_id, low_id, buff, data_len);
-	assert(rc == 0);
+	if (rc) goto end1;
 	assert(strncmp(data, buff, data_len) == 0);
 	buff[data_len] = 0;
 	printf("Got ... %s\n", buff);
+end1:
+	printf("exit rc: %d\n", rc);
 	printf("Deleting ...\n");
 	rc = delete_object(high_id, low_id);
 	assert(rc == 0);
