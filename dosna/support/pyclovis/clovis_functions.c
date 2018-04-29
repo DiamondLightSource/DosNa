@@ -123,16 +123,8 @@ write_data_to_object(struct m0_uint128 id, struct m0_indexvec *ext,
 	m0_clovis_obj_init(&obj, &clovis_uber_realm, &id,
 			   m0_clovis_default_layout_id(clovis_instance));
 
-//      rc = open_entity(&obj.ob_entity);
-//      if (rc)
-//              return rc;
 	open_entity(&obj.ob_entity);
 	m0_clovis_obj_op(&obj, M0_CLOVIS_OC_WRITE, ext, data, attr, 0, &ops[0]);
-
-//      if (ops[0] == NULL || ops[0]->op_sm.sm_rc != 0) {
-//              rc = EPERM;
-//              goto write_exit1;
-//      }
 
 	m0_clovis_op_launch(ops, 1);
 
@@ -145,7 +137,7 @@ write_data_to_object(struct m0_uint128 id, struct m0_indexvec *ext,
 
 	m0_clovis_op_fini(ops[0]);
 	m0_clovis_op_free(ops[0]);
-//write_exit1:
+
 	m0_clovis_entity_fini(&obj.ob_entity);
 	return rc;
 }
@@ -351,6 +343,7 @@ write_object(uint64_t high_id, uint64_t low_id, char *buffer, size_t length)
 	if (rc)
 		goto write_exit1;
 	int             byte_count = 0;
+
 	for (i = 0; i < n_full_blocks; i++) {
 		ext.iv_index[i] = byte_count;
 		ext.iv_vec.v_count[i] = clovis_block_size;
@@ -369,7 +362,6 @@ write_object(uint64_t high_id, uint64_t low_id, char *buffer, size_t length)
 		       buffer + n_full_blocks * clovis_block_size,
 		       length % clovis_block_size);
 	}
-
 	rc = write_data_to_object(id, &ext, &data, &attr);
 
 	m0_bufvec_free(&attr);
@@ -395,10 +387,7 @@ exist_object(uint64_t high_id, uint64_t low_id)
 	m0_clovis_obj_init(&obj, &clovis_uber_realm, &id,
 			   m0_clovis_default_layout_id(clovis_instance));
 	rc = open_entity(&obj.ob_entity);
-//      int state;
-//      state = obj.ob_entity.en_sm.sm_state;
-//      m0_clovis_entity_fini(&obj.ob_entity);
-//      return state == M0_CLOVIS_OS_FAILED;
+
 	m0_clovis_entity_fini(&obj.ob_entity);
 	return rc >= 0;
 }
