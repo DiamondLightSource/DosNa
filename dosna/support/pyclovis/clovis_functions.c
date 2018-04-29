@@ -242,7 +242,7 @@ delete_object(uint64_t high_id, uint64_t low_id)
 			   m0_clovis_default_layout_id(clovis_instance));
 
 	rc = open_entity(&obj.ob_entity);
-	if (rc)
+	if (rc < 0) // object not found
 		return rc;
 
 	rc = delete_entity(&obj.ob_entity);
