@@ -85,11 +85,11 @@ open_entity(struct m0_clovis_entity *entity)
 
 	m0_clovis_entity_open(entity, &ops[0]);
 	m0_clovis_op_launch(ops, 1);
-	rc = m0_clovis_op_wait(ops[0],
-			  M0_BITS(M0_CLOVIS_OS_FAILED, M0_CLOVIS_OS_STABLE),
-			  M0_TIME_NEVER);
-	// rc = m0_clovis_rc(ops[0]);
-	// rc = ops[0]->op_sm.sm_rc;
+	m0_clovis_op_wait(ops[0],
+					  M0_BITS(M0_CLOVIS_OS_FAILED, M0_CLOVIS_OS_STABLE),
+			                  M0_TIME_NEVER);
+	// this return code is not the state machine return code
+	rc = m0_clovis_rc(ops[0]);
 	m0_clovis_op_fini(ops[0]);
 	m0_clovis_op_free(ops[0]);
 	return rc;
