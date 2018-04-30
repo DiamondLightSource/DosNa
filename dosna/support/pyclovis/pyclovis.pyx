@@ -1,7 +1,11 @@
 import json
 import logging
 
-from libc.stdlib cimport free, malloc
+from cpython cimport PyObject
+
+cdef extern from "Python.h":
+    PyObject *PyBytes_FromStringAndSize(char *v, Py_ssize_t len) except NULL
+    char* PyBytes_AsString(PyObject *string) except NULL
 
 cdef extern from "clovis_functions.h":
     ctypedef unsigned long uint64_t
@@ -196,18 +200,16 @@ class Clovis:
                           size_t length):
         cdef:
             char *buffer = NULL
+            PyObject *buffer_bytes
             int rc
 
         self._check_connected()
-        try:
-            buffer = <char *> malloc(length)
-            rc = read_object(high_id, low_id, buffer, length)
-            if rc != 0:
-                raise Exception("Error {} while reading object".format(rc))
-            data = buffer[:length]
-            return data
-        finally:
-            free(buffer)
+        buffer_bytes = PyBytes_FromStringAndSize(NULL, length)
+        buffer = PyBytes_AsString(buffer_bytes)
+        rc = read_object(high_id, low_id, buffer, length)
+        if rc != 0:
+            raise Exception("Error {} while reading object".format(rc))
+        return <object> buffer_bytes
 
     def disconnect(self):
         self.is_connected = False
