@@ -23,9 +23,6 @@ class CpuConnection(EngineConnection):
         dataset = self.instance.get_dataset(name)
         return CpuDataset(dataset)
 
-    def __getitem__(self, ds_name):
-        return self.get_dataset(ds_name)
-
 
 class CpuDataset(EngineDataset):
 

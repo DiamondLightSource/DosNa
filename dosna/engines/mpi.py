@@ -59,9 +59,6 @@ class MpiConnection(EngineConnection, MpiMixin):
             self.instance.del_dataset(name)
         self.mpi_barrier()
 
-    def __getitem__(self, ds_name):
-        return self.get_dataset(ds_name)
-
 
 class MpiDataset(CpuDataset, MpiMixin):
 
