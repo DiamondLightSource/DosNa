@@ -7,7 +7,7 @@ if [ "$#" -eq 0 ]; then
     PYTHONPATH=. python -m unittest discover -s "${SDIR}/dosna/tests" -v
 else
     echo "Unittest manual mode:" $@
-    for script in 'connection' 'dataset';
+    for script in 'connection' 'dataset' 'dataset_mpi';
     do
         echo "========================================"
         echo "Running tests on ${script}"

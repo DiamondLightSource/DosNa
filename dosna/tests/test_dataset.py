@@ -10,14 +10,6 @@ import dosna as dn
 from dosna.backends.base import DatasetNotFoundError
 from dosna.tests import configure_logger
 
-try:
-    from dosna.util.mpi import mpi_barrier
-    from dosna.util.mpi import mpi_comm
-    from dosna.util.mpi import mpi_is_root
-    from dosna.util.mpi import mpi_rank
-    from dosna.util.mpi import mpi_size
-except ImportError:
-    pass
 
 log = logging.getLogger(__name__)
 
@@ -50,8 +42,10 @@ class DatasetTest(unittest.TestCase):
         cls.connection_handle.disconnect()
 
     def setUp(self):
-        if ENGINE == 'mpi' and mpi_size() > 1:
-            self.skipTest("This should not test concurrent access")
+        if ENGINE == 'mpi':
+            from dosna.util.mpi import mpi_size
+            if mpi_size() > 1:
+                self.skipTest("This should not test concurrent access")
 
         log.info('DatasetTest: %s, %s, %s',
                  BACKEND, ENGINE, CONNECTION_CONFIG)
@@ -147,109 +141,6 @@ class DatasetTest(unittest.TestCase):
     def test_get_non_existing_dataset(self):
         with self.assertRaises(DatasetNotFoundError):
             self.connection_handle.get_dataset('ThisDoesNotExist')
-
-
-class MpiDatasetTest(unittest.TestCase):
-
-    connection_handle = None
-
-    @classmethod
-    def setUpClass(cls):
-        dn.use(backend=BACKEND, engine=ENGINE)
-        cls.connection_handle = dn.Connection(**CONNECTION_CONFIG)
-        cls.connection_handle.connect()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.connection_handle.disconnect()
-        cls.connection_handle = None
-
-    def setUp(self):
-        if ENGINE != "mpi" or mpi_size() < 2:
-            self.skipTest("Test for engine mpi with several processes")
-
-        if BACKEND == "ram":
-            self.skipTest("Concurrent access in backend ram is not supported")
-
-        log.info('DatasetTest: %s, %s, %s',
-                 BACKEND, ENGINE, CONNECTION_CONFIG)
-
-        self.fake_dataset = 'NotADataset'
-        data = None
-        if mpi_is_root():
-            data = np.random.random_integers(DATASET_NUMBER_RANGE[0],
-                                             DATASET_NUMBER_RANGE[1],
-                                             DATA_SIZE)
-        self.data = mpi_comm().bcast(data, root=0)
-        self.dataset = self.connection_handle.create_dataset(
-            self.fake_dataset, data=self.data, chunk_size=DATA_CHUNK_SIZE)
-
-    def tearDown(self):
-        self.connection_handle.del_dataset(self.fake_dataset)
-
-    def test_load_function(self):
-        np.testing.assert_array_equal(self.dataset[...], self.data)
-        mpi_barrier()
-
-    def test_non_overlapping_get(self):
-        chunks_per_process = self.dataset.chunk_grid[0] // mpi_size()
-
-        x_start = mpi_rank() * chunks_per_process * DATA_CHUNK_SIZE[0]
-        if mpi_rank() == mpi_size() - 1:
-            x_stop = self.dataset.shape[0]
-        else:
-            x_stop = (mpi_rank() + 1) * chunks_per_process * DATA_CHUNK_SIZE[0]
-        if x_start < self.dataset.shape[0]:
-            np.testing.assert_array_equal(self.dataset[x_start:x_stop, ...],
-                                          self.data[x_start:x_stop, ...])
-        mpi_barrier()
-
-    def test_non_overlapping_set(self):
-        chunks_per_process = self.dataset.chunk_grid[0] // mpi_size()
-
-        x_start = mpi_rank() * chunks_per_process * DATA_CHUNK_SIZE[0]
-        if mpi_rank() == mpi_size() - 1:
-            x_stop = self.dataset.shape[0]
-        else:
-            x_stop = (mpi_rank() + 1) * chunks_per_process * DATA_CHUNK_SIZE[0]
-        if x_start < self.dataset.shape[0]:
-            self.dataset[x_start:x_stop, ...] = \
-                self.data[x_start:x_stop, ...] * 3 + 5
-        mpi_barrier()
-        if mpi_is_root():
-            expected = self.data * 3 + 5
-            result = self.dataset[...]
-            np.testing.assert_array_equal(result, expected)
-        mpi_barrier()
-
-    def test_dataset_clear(self):
-        self.dataset.clear()
-        if mpi_is_root():
-            np.testing.assert_array_equal(self.dataset[...],
-                                          self.dataset.fillvalue)
-        mpi_barrier()
-
-    def test_map(self):
-        dataset2 = self.dataset.map(lambda x: x + 1, self.fake_dataset + '2')
-        if mpi_is_root():
-            np.testing.assert_array_equal(dataset2[...], self.dataset[...] + 1)
-        mpi_barrier()
-        dataset2.delete()
-
-    def test_clone_and_load(self):
-        clone_dataset = self.dataset.clone(
-            "{}_clone".format(self.dataset.name))
-        clone_dataset.load(self.dataset[...])
-        if mpi_is_root():
-            np.testing.assert_array_equal(clone_dataset[...], self.data)
-        mpi_barrier()
-        clone_dataset.delete()
-
-    def test_apply(self):
-        self.dataset.apply(lambda x: x + 1)
-        if mpi_is_root():
-            np.testing.assert_array_equal(self.dataset[...], self.data + 1)
-        mpi_barrier()
 
 
 def main():
