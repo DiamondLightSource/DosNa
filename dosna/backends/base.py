@@ -151,6 +151,8 @@ class BackendDataset(object):
         return self.get_chunk(idx)[slices]
 
     def set_chunk_data(self, idx, values, slices=None):
+        if not self.has_chunk(idx):
+            self.create_chunk(idx, values, slices)
         self.get_chunk(idx)[slices] = values
 
     # Utility methods used by all backends and engines
