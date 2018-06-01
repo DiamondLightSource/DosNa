@@ -124,7 +124,7 @@ class JoblibDataset(CpuDataset):
     def clone(self, output_name):
         out = self.instance.connection.create_dataset(
             output_name, shape=self.shape,
-            dtype=self.dtype, chunks=self.chunk_size,
+            dtype=self.dtype, chunk_size=self.chunk_size,
             fillvalue=self.fillvalue)
         return JoblibDataset(out, self.njobs, self.jlbackend)
 
