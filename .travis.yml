@@ -17,7 +17,7 @@ addons:
 
 python:
   - 2.7
-  - 3.3
+  - 3.6
 
 env:
   - ENGINE=cpu BACKEND=ram
@@ -29,9 +29,9 @@ env:
 
 matrix:
   exclude:
-    - python: 3.3
+    - python: 3.6
       env: ENGINE=cpu BACKEND=ceph
-    - python: 3.3
+    - python: 3.6
       env: ENGINE=mpi BACKEND=ceph
 
 install:

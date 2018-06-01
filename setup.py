@@ -15,5 +15,13 @@ setup(
                                    '*_config', '*.conf', '*.so']
     },
     include_package_data=True,
-    packages=find_packages() + ['dosna']
+    packages=find_packages() + ['dosna'],
+    python_requires=">=2.7.0",
+    install_requires=["numpy>=1.13.0", "six>=1.10.0"],
+    extras_require={
+        "hdf5": ["h5py>=2.7.0"],
+        "jl": ["joblib>=0.11"],
+        "ceph": ["python-cephlibs>=0.94.0"],
+        "mpi": ["mpi4py>=3.0.0"]
+    }
 )
