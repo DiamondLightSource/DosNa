@@ -8,13 +8,18 @@ import numpy as np
 
 import dosna as dn
 from dosna.tests import configure_logger
-from dosna.util.mpi import mpi_barrier
-from dosna.util.mpi import mpi_comm
-from dosna.util.mpi import mpi_is_root
-from dosna.util.mpi import mpi_rank
-from dosna.util.mpi import mpi_size
 
 log = logging.getLogger(__name__)
+
+try:
+    from dosna.util.mpi import mpi_barrier
+    from dosna.util.mpi import mpi_comm
+    from dosna.util.mpi import mpi_is_root
+    from dosna.util.mpi import mpi_rank
+    from dosna.util.mpi import mpi_size
+except ImportError as e:
+    log.warning('Not Running MPI dataset tests: openmpi and/or mpi4py may be missing')
+    sys.exit()
 
 BACKEND = 'ram'
 ENGINE = 'cpu'
