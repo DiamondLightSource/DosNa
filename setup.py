@@ -14,7 +14,6 @@ setup(
         'dosna.support.pyclovis': ['*.pxd', '*.pxi', '*.pyx', '*.c', '*.h',
                                    '*_config', '*.conf', '*.so']
     },
-    include_package_data=True,
     packages=find_packages() + ['dosna'],
     python_requires=">=2.7.0",
     install_requires=["numpy>=1.13.0", "six>=1.10.0"],
