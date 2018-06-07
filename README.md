@@ -69,22 +69,55 @@ Requirements:
  - Examples:
      + `convolutions.py`: [scipy](https://www.scipy.org/)
 
-Clone repository:
+
+### Installing from sources
+- Clone repository:
 
 ```bash
 git clone https://github.com/DiamondLightSource/DosNa.git
 ```
 
-Install it:
+- Install it:
 
 ```bash
 cd DosNa && python setup.py install
 ```
 
+or alternatively, install it in development mode:
+
+```bash
+cd DosNa && python setup.py develop
+```
+
+### Installing from PyPi
+
+Pip could be used to install the last release
+
+- Use pip:
+
+```bash
+pip install DosNa
+```
+
+or alternatively, install it with an extra feature (mpi, ceph, jl or hdf5) e.g:
+
+```bash
+pip install DosNa[mpi]
+```
+
+## Configuration
+A configuration file may be required for a specific backend,
+in that case, the file path is passed as a connection parameter.
+
+### Ceph
 Configure connection to a Ceph cluster (for using with Ceph backend):
 
  - Create a `ceph.conf` file with the IP or HOST addresses of the CEPH
  entry and cluster nodes (see `ceph.sample.conf` as an example)
+
+### Sage
+When sage backend is used, a configuration file will be required, see
+`sage.sample.conf` as an example.
 
 ## Basic Usage
 
