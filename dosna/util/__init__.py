@@ -37,7 +37,7 @@ class Timer(object):
     def __exit__(self, *args):
         self.tend = time.time()
         self.time = self.tend - self.tstart
-        print('[*] %s -- Elapsed: %.4f seconds'.format(self.name, self.time))
+        print('[*] {} -- Elapsed: {:.4f} seconds'.format(self.name, self.time))
 
 
 class DirectoryTreeMixin(object):
