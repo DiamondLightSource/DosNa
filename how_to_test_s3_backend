@@ -1,0 +1,1 @@
+sh run_tests.sh --engine cpu --backend s3 --connection value_ignored --connection-options endpoint_url=https://ceph-res-gw1.fds.rl.ac.uk verify=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem

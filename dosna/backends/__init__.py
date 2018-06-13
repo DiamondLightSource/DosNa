@@ -9,7 +9,7 @@ from dosna.util import named_module
 log = logging.getLogger(__name__)
 
 _current = None
-AVAILABLE = ['ram', 'hdf5', 'ceph', 'sage']
+AVAILABLE = ['ram', 'hdf5', 'ceph', 'sage', 's3']
 
 # Currently there is no need for more fancy attributes
 Backend = namedtuple('Backend', ['name', 'Connection', 'Dataset', 'DataChunk'])
