@@ -246,6 +246,10 @@ for i, DS in enumerate(DATA_SIZE):
     f, data = create_random_dataset(DS)
 
     for j, CS in enumerate(CHUNK_SIZE):
+        if CS > DS:
+            pprint('Skipping not valid parameters'
+                   ' -- shape: {} chunk_size: {}'.format(DS, CS))
+            continue
         with dn.Connection(**CONNECTION_CONFIG) as connection:
             pprint('Loading Data -- shape: {} chunk_size: {}'
                    .format(DS, CS))

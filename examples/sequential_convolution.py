@@ -167,6 +167,10 @@ def main():
         data = create_random_dataset(DS)
 
         for j, CS in enumerate(chunk_sizes):
+            if CS > DS:
+                print('Skipping not valid parameters'
+                      ' -- shape: {} chunk_size: {}'.format(DS, CS))
+                continue
             with dn.Connection(**connection_config) as connection:
                 print('Loading Data -- shape: {} chunk_size: {}'.format(DS, CS))
                 t = Timer('Data loaded')
