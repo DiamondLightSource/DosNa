@@ -197,6 +197,7 @@ class S3Dataset(BackendDataset):
             raise Exception('DataChunk `{}{}` already exists'.
                             format(self.name, idx))
         name = self._idx2name(idx)
+        print "Name = %s" % (name)
         dtype = self.dtype
         shape = self.chunk_size
         fillvalue = self.fillvalue
