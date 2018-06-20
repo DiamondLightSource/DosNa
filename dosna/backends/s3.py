@@ -32,12 +32,14 @@ class S3Connection(BackendConnection):
     """
 
     def __init__(self, name, endpoint_url=None, verify=True,
+                 profile_name='default',
                  *args, **kwargs):
         super(S3Connection, self).__init__(name, *args, **kwargs)
 
         self._endpoint_url = endpoint_url
         self._verify = verify
         self._client = None
+        self._profile_name = profile_name
 
         super(S3Connection, self).__init__(name, *args, **kwargs)
 
@@ -46,8 +48,7 @@ class S3Connection(BackendConnection):
         if self.connected:
             raise ConnectionError(
                 'Connection {} is already open'.format(self.name))
-
-        session = boto3.session.Session()
+        session = boto3.session.Session(profile_name=self._profile_name)
 
         # Use access key and secret_key in call to client?
         self._client = session.client(
@@ -197,6 +198,7 @@ class S3Dataset(BackendDataset):
             raise Exception('DataChunk `{}{}` already exists'.
                             format(self.name, idx))
         name = self._idx2name(idx)
+#        print "Name = %s" % (name)
         dtype = self.dtype
         shape = self.chunk_size
         fillvalue = self.fillvalue
