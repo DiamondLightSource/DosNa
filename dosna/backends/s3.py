@@ -25,6 +25,12 @@ _CHUNK_SIZE = 'chunk-size'
 
 log = logging.getLogger(__name__)
 
+# Sanitise bucket name to conform to AWS conventions
+
+
+def bucketName(name):
+    return name.replace('_', '-').lower()
+
 
 class S3Connection(BackendConnection):
     """
@@ -87,6 +93,8 @@ class S3Connection(BackendConnection):
         chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size))\
             .astype(int)
 
+        name = bucketName(name)
+
         log.debug('creating dataset %s with shape:%s chunk_size:%s '
                   'chunk_grid:%s', name, shape, chunk_size, chunk_grid)
 
@@ -143,6 +151,8 @@ class S3Connection(BackendConnection):
 
     def get_dataset_root(self, name):
 
+        name = bucketName(name)
+
         dataset_root = None
         try:
             dataset_root = self._client.get_object(
@@ -170,6 +180,7 @@ class S3Connection(BackendConnection):
 
         if self.has_dataset(name):
 
+            name = bucketName(name)
             try:
                 self._client.delete_object(Bucket=name, Key=_DATASET_ROOT)
                 self._client.delete_bucket(Bucket=name)
@@ -222,7 +233,7 @@ class S3Dataset(BackendDataset):
         has_chunk = False
         name = self._idx2name(idx)
         try:
-            self.client.head_object(Bucket=self._name, Key=name)
+            self.client.head_object(Bucket=bucketName(self._name), Key=name)
             has_chunk = True
         except ClientError as e:
             log.debug("ClientError: %s", e.response['Error']['Code'])
@@ -232,7 +243,7 @@ class S3Dataset(BackendDataset):
     def del_chunk(self, idx):
         if self.has_chunk(idx):
             self.client.delete_object(
-                Bucket=self._name,
+                Bucket=bucketName(self._name),
                 Key=self._idx2name(idx)
             )
 
@@ -261,7 +272,7 @@ class S3DataChunk(BackendDataChunk):
     def write_full(self, data):
 
         self.client.put_object(
-            Bucket=self.dataset.name, Key=self.name, Body=data
+            Bucket=bucketName(self.dataset.name), Key=self.name, Body=data
         )
 
     def read(self, length=None, offset=0):
@@ -270,7 +281,7 @@ class S3DataChunk(BackendDataChunk):
 
         byteRange = 'bytes={}-{}'.format(offset, offset+length-1)
         return self.client.get_object(
-            Bucket=self.dataset.name,
+            Bucket=bucketName(self.dataset.name),
             Key=self.name,
             Range=byteRange
         )['Body'].read()
