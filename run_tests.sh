@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 SDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ "$#" -eq 0 ]; then
