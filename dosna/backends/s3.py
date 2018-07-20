@@ -216,7 +216,7 @@ class S3Dataset(BackendDataset):
         datachunk = S3DataChunk(self, idx, name, shape, dtype, fillvalue)
         if data is None:
             data = np.full(shape, fillvalue, dtype)
-        datachunk.set_data(data, slices)
+        datachunk.set_data(data, slices, fill_others=True)
         return datachunk
 
     def get_chunk(self, idx):
@@ -261,11 +261,14 @@ class S3DataChunk(BackendDataChunk):
         data.shape = self.shape
         return data[slices]
 
-    def set_data(self, values, slices=None):
+    def set_data(self, values, slices=None, fill_others=False):
         if slices is None or slices2shape(slices) == self.shape:
             self.write_full(values.tobytes())
         else:
-            cdata = self.get_data()
+            if fill_others:
+                cdata = np.full(self.shape, self.fillvalue, self.dtype)
+            else:
+                cdata = self.get_data()
             cdata[slices] = values
             self.write_full(cdata.tobytes())
 
