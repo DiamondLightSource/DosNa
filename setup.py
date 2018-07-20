@@ -21,6 +21,7 @@ setup(
         "hdf5": ["h5py>=2.7.0"],
         "jl": ["joblib>=0.11"],
         "ceph": ["python-cephlibs>=0.94.0"],
-        "mpi": ["mpi4py>=3.0.0"]
+        "mpi": ["mpi4py>=3.0.0"],
+        "s3": ["boto3>=1.7.30"]
     }
 )
