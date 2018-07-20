@@ -62,6 +62,7 @@ Requirements:
      + hdf5: [h5py](http://docs.h5py.org/en/latest/quick.html)
      + ceph: [librados](http://docs.ceph.com/docs/master/rados/api/librados-intro/#getting-librados-for-python)
      + sage: [pyclovis](/dosna/support/pyclovis)
+     + s3: [boto3](https://github.com/boto/boto3)
  - Engines:
      + cpu: none
      + jl: [joblib](https://pythonhosted.org/joblib/)
@@ -118,6 +119,11 @@ Configure connection to a Ceph cluster (for using with Ceph backend):
 ### Sage
 When sage backend is used, a configuration file will be required, see
 `sage.sample.conf` as an example.
+
+### S3
+This backend will use the user aws credentials
+(located in `~/.aws/credentials`), please make sure you have configured
+aws credentials before using the s3 backend.
 
 ## Basic Usage
 
@@ -194,8 +200,8 @@ dn.use(backend='hdf5', engine='mpi')
 
 ## Backends
 
-There are currently 2 test backends (`ram` and `hdf5`) and 2 backend
-wrapping a real object store (`ceph` and `sage`).
+There are currently 2 test backends (`ram` and `hdf5`) and 3 backend
+wrapping a real object store (`ceph`, `sage` and `s3`).
 
 ### Ram
 
@@ -276,9 +282,26 @@ dataset id and the least significant 64 bits represents the chunk id.
  Connection parameters: \
  `Connection(name, conffile='sage.conf')`
 
- - name (string): The name that identifies the connection.
+- name (string): The name that identifies the connection.
 - conffile (string): The sage configuration file path. Defaults to
 'sage.conf' in current directory.
+
+### S3
+
+S3 backend connects to an object storage using the S3 interfaces.
+Datasets are mapped to buckets which will contain each chunk as
+a different object.
+
+ Connection parameters: \
+ `Connection(name)`
+
+- name (string): The name that identifies the connection.
+- endpoint_url (string): S3 endpoint url. Defaults to None.
+- verify (boolean/string): Path to CA cert bundle that will be used
+  to verify SSL certificates. Set to `False` if this validation is not
+  required.
+- profile_name: Profile name for the entry in credentials that will be
+used. Default value: `'default'`.
 
 ## Engines
 
