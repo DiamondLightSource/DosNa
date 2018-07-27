@@ -184,7 +184,9 @@ def main():
                     'conv1_times': [],
                     'conv2_times': [],
                     'dataset_size': DS,
-                    'datachunk_size': CS
+                    'datachunk_size': CS,
+                    'engine': args.engine,
+                    'backend': args.backend
                 })
 
                 for k in range(ntest):
