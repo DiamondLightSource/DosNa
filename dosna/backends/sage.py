@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import os
 
 import numpy as np
 
@@ -24,8 +25,24 @@ log = logging.getLogger(__name__)
 
 class SageConnection(BackendConnection):
 
-    def __init__(self, name, conffile='sage.conf', *args, **kwargs):
+    def __init__(self, name, conffile='sage.conf', prefix_conffile=False,
+                 *args, **kwargs):
         super(SageConnection, self).__init__(name, *args, **kwargs)
+        if prefix_conffile:
+            import socket
+            from mpi4py import MPI
+            host = socket.gethostname()
+            rank = MPI.COMM_WORLD.Get_rank()
+            host_rank_conffile = "{}.{}.{}".format(host, rank, conffile)
+            rank_conffile = "{}.{}".format(rank, conffile)
+            if os.access(host_rank_conffile, os.R_OK):
+                conffile = host_rank_conffile
+            elif os.access(rank_conffile, os.R_OK):
+                conffile = rank_conffile
+        if not os.access(conffile, os.R_OK):
+            raise ConnectionError("Configuration file {} not found"
+                                  .format(conffile))
+        log.info('Sage configuration file used: %s', conffile)
         self.conffile = conffile
         self.clovis = Clovis(conffile=self.conffile)
 

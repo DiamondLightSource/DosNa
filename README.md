@@ -285,6 +285,10 @@ dataset id and the least significant 64 bits represents the chunk id.
 - name (string): The name that identifies the connection.
 - conffile (string): The sage configuration file path. Defaults to
 'sage.conf' in current directory.
+- prefix_conffile (boolean): This allows having a configuration file
+prefixed by the hostname and the rank (or prefixed by only the rank), `.`
+is used as the separator, e.g: `host.0.sage.conf` or `0.sage.conf`.
+ Defaults to `False`.
 
 ### S3
 
