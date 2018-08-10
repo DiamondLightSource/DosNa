@@ -8,15 +8,27 @@ from __future__ import print_function
 import argparse
 import json
 from os.path import join
+from time import strftime
 
 import numpy as np
 
-from imageio import imwrite
+try:
+    from imageio import imwrite
+except:
+    pass
 
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 import dosna as dn
 from dosna.util import Timer
+
+PREFIX = strftime("%y%m%d%H%M%S")
+IN_DS_NAME = '{}_data_'.format(PREFIX)
+DS1_NAME = '{}_gaussian_3d'.format(IN_DS_NAME)
+DS2X_NAME = '{}_gaussian_x'.format(IN_DS_NAME)
+DS2Y_NAME = '{}_gaussian_y'.format(IN_DS_NAME)
+DS2Z_NAME = '{}_gaussian_z'.format(IN_DS_NAME)
+RESULT = "{}_result.json".format(PREFIX)
 
 
 def parse_args():
@@ -62,7 +74,7 @@ def convolve1(ds, sigma, out_path):
 
     print('Convolving in 3D')
 
-    ds3d_ = ds.clone('gaussian_3d')
+    ds3d_ = ds.clone(DS1_NAME)
     timer = Timer('Separable 3D convolution')
 
     timer.__enter__()
@@ -81,10 +93,14 @@ def convolve1(ds, sigma, out_path):
 
     try:
         imwrite(join(out_path,
-                     'conv3d_{}-{}.png'.format(ds.shape[0], ds.chunk_size[0])),
+                     '{}_conv3d_{}-{}.png'.format(PREFIX, ds.shape[0],
+                                                  ds.chunk_size[0])),
                 (ds3d_[ds.shape[0] // 2]*255).astype(np.uint8))
     except NameError:
         pass
+    except Exception as ex:
+        print('Skipping image write due to errors: {}'.format(
+            ex.message))
 
     ds3d_.delete()
 
@@ -98,7 +114,7 @@ def convolve2(ds, sigma, out_path):
     timer.__enter__()
     print('Convolving axis Z')
 
-    ds1_ = ds.clone('gaussian_z')
+    ds1_ = ds.clone(DS2Z_NAME)
 
     for z in range(ds.chunk_grid[0]):
         zS = z * ds.chunk_size[0]
@@ -110,7 +126,7 @@ def convolve2(ds, sigma, out_path):
 
     print('Convolving axis Y')
 
-    ds2_ = ds.clone('gaussian_y')
+    ds2_ = ds.clone(DS2Y_NAME)
 
     for y in range(ds.chunk_grid[1]):
         yS = y * ds.chunk_size[1]
@@ -122,7 +138,7 @@ def convolve2(ds, sigma, out_path):
 
     print('Convolving axis X')
 
-    ds3_ = ds.clone('gaussian_x')
+    ds3_ = ds.clone(DS2X_NAME)
 
     for x in range(ds.chunk_grid[2]):
         xS = x * ds.chunk_size[2]
@@ -132,9 +148,16 @@ def convolve2(ds, sigma, out_path):
 
     timer.__exit__()
 
-    imwrite(join(out_path, 'conv3x1d_{}-{}.png'.format(ds.shape[0],
-                                                       ds.chunk_size[0])),
-            (ds3_[ds.shape[0] // 2]*255).astype(np.uint8))
+    try:
+        imwrite(join(out_path, '{}_conv3x1d_{}-{}.png'.format(PREFIX,
+                                                              ds.shape[0],
+                                                              ds.chunk_size[0])),
+                (ds3_[ds.shape[0] // 2]*255).astype(np.uint8))
+    except NameError:
+        pass
+    except Exception as ex:
+        print('Skipping image write due to errors: {}'.format(
+            ex.message))
 
     ds1_.delete()
     ds2_.delete()
@@ -175,7 +198,7 @@ def main():
                 print('Loading Data -- shape: {} chunk_size: {}'.format(DS, CS))
                 t = Timer('Data loaded')
                 t.__enter__()
-                dataset = connection.create_dataset('data', data=data,
+                dataset = connection.create_dataset(IN_DS_NAME, data=data,
                                                     chunk_size=(CS, CS, CS))
                 t.__exit__()
 
@@ -197,7 +220,7 @@ def main():
 
                 dataset.delete()
 
-    json.dump(result_info, open(join(out_path, "result.json"), "w"),
+    json.dump(result_info, open(join(out_path, RESULT), "w"),
               sort_keys=True, indent=4, separators=(',', ': '))
 
 
