@@ -181,7 +181,8 @@ def main():
     engine, backend = dn.status()
     print('Starting Test == Backend: {}, Engine: {}, config: {}, Out: {}'
           .format(backend.name, engine.name, connection_config, out_path))
-
+    connection = dn.Connection(**connection_config)
+    connection.connect()
     for i, DS in enumerate(data_sizes):
 
         data = create_random_dataset(DS)
@@ -191,35 +192,36 @@ def main():
                 print('Skipping not valid parameters'
                       ' -- shape: {} chunk_size: {}'.format(DS, CS))
                 continue
-            with dn.Connection(**connection_config) as connection:
-                print('Loading Data -- shape: {} chunk_size: {}'.format(DS, CS))
-                t = Timer('Data loaded')
-                with t:
-                    dataset = connection.create_dataset(IN_DS_NAME, data=data,
-                                                        chunk_size=(CS, CS, CS))
 
-                result_info.append({
-                    'create_time': t.time,
-                    'conv1_times': [],
-                    'conv2_times': [],
-                    'dataset_size': DS,
-                    'datachunk_size': CS,
-                    'engine': args.engine,
-                    'backend': args.backend
-                })
+            print('Loading Data -- shape: {} chunk_size: {}'.format(DS, CS))
+            t = Timer('Data loaded')
+            with t:
+                dataset = connection.create_dataset(IN_DS_NAME, data=data,
+                                                    chunk_size=(CS, CS, CS))
 
-                for k in range(ntest):
-                    t1 = convolve1(dataset, sigma, out_path)
-                    result_info[-1]['conv1_times'].append(t1)
-                    t2 = convolve2(dataset, sigma, out_path)
-                    result_info[-1]['conv2_times'].append(t2)
-                t = Timer('Data deleted')
-                with t:
-                    dataset.delete()
-                result_info[-1]['delete_time'] = t.time
+            result_info.append({
+                'create_time': t.time,
+                'conv1_times': [],
+                'conv2_times': [],
+                'dataset_size': DS,
+                'datachunk_size': CS,
+                'engine': args.engine,
+                'backend': args.backend
+            })
 
-    json.dump(result_info, open(join(out_path, RESULT), "w"),
-              sort_keys=True, indent=4, separators=(',', ': '))
+            for k in range(ntest):
+                t1 = convolve1(dataset, sigma, out_path)
+                result_info[-1]['conv1_times'].append(t1)
+                t2 = convolve2(dataset, sigma, out_path)
+                result_info[-1]['conv2_times'].append(t2)
+            t = Timer('Data deleted')
+            with t:
+                dataset.delete()
+            result_info[-1]['delete_time'] = t.time
+            # write after every test, to not loose a lot of data when
+            # there are errors
+            json.dump(result_info, open(join(out_path, RESULT), "w"),
+                      sort_keys=True, indent=4, separators=(',', ': '))
 
 
 if __name__ == "__main__":
