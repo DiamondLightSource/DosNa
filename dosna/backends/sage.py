@@ -33,8 +33,13 @@ class SageConnection(BackendConnection):
             from mpi4py import MPI
             host = socket.gethostname()
             rank = MPI.COMM_WORLD.Get_rank()
-            host_rank_conffile = "{}.{}.{}".format(host, rank, conffile)
-            rank_conffile = "{}.{}".format(rank, conffile)
+            conffile_name = os.path.basename(conffile)
+            conffile_dir = os.path.dirname(conffile)
+            host_rank_conffile = os.path.join(conffile_dir,
+                                              "{}.{}.{}".format(host, rank,
+                                                                conffile_name))
+            rank_conffile = os.path.join(conffile_dir,
+                                         "{}.{}".format(rank, conffile_name))
             if os.access(host_rank_conffile, os.R_OK):
                 conffile = host_rank_conffile
             elif os.access(rank_conffile, os.R_OK):
