@@ -2,7 +2,7 @@
 """Backend jl uses module joblib to parallelize the dataset processing
 functions"""
 
-import logging as log
+import logging
 import tempfile
 
 import numpy as np
@@ -14,6 +14,7 @@ from dosna.engines.base import EngineConnection, EngineDataChunk
 from dosna.engines.cpu import CpuDataset
 from six.moves import range
 
+log = logging.getLogger(__name__)
 
 class JoblibConnection(EngineConnection):
 

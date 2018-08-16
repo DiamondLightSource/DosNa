@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import logging as logging
+import logging
 import sys
 import unittest
 

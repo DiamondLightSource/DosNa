@@ -2,9 +2,11 @@
 """Helper functions to store and get the selected engine"""
 
 from collections import namedtuple
-import logging as log
+import logging
 
 from dosna.util import named_module
+
+log = logging.getLogger(__name__)
 
 AVAILABLE = ['cpu', 'jl', 'mpi']
 
