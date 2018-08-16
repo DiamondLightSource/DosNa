@@ -128,6 +128,8 @@ class SageDataset(BackendDataset):
         dtype = self.dtype
         shape = self.chunk_size
         fillvalue = self.fillvalue
+        log.debug('creating datachunk %s with idx:%s shape:%s', name, idx,
+                  shape)
         self.connection.clovis.create_object_chunk(self.name, name)
         datachunk = SageDataChunk(self, idx, name, shape, dtype, fillvalue)
         if data is None:
@@ -149,6 +151,7 @@ class SageDataset(BackendDataset):
                                                        self._idx2name(idx))
 
     def del_chunk(self, idx):
+        log.debug("deleting datachunk from %s with idx:%s", self.name, idx)
         self.connection.clovis.delete_object_chunk(self.name,
                                                    self._idx2name(idx))
 
