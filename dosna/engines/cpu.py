@@ -23,6 +23,15 @@ class CpuConnection(EngineConnection):
         dataset = self.instance.get_dataset(name)
         return CpuDataset(dataset)
 
+    def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
+                       data=None, chunk_size=None):
+        dataset = self.instance.create_dataset(name, shape, dtype, fillvalue,
+                                               data, chunk_size)
+        engine_dataset = CpuDataset(dataset)
+        if data is not None:
+            engine_dataset.load(data)
+        return engine_dataset
+
 
 class CpuDataset(EngineDataset):
 
