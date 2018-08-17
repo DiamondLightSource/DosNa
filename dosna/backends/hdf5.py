@@ -154,6 +154,8 @@ class H5Dataset(BackendDataset, DirectoryTreeMixin):
     def del_chunk(self, idx):
         if self.has_chunk(idx):
             os.remove(self.relpath(self._idx2name(idx)))
+            return True
+        return False
 
 
 class H5DataChunk(BackendDataChunk, DirectoryTreeMixin):

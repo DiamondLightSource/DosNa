@@ -101,6 +101,8 @@ class MemDataset(BackendDataset):
     def del_chunk(self, idx):
         if self.has_chunk(idx):
             del self.data_chunks[idx]
+            return True
+        return False
 
 
 class MemDataChunk(BackendDataChunk):

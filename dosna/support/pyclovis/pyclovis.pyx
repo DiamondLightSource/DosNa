@@ -183,6 +183,9 @@ class Clovis:
 
         self._check_connected()
         rc = delete_object(high_id, low_id)
+        if rc < 0:  # object doesn't exist
+            raise KeyError("Object not found")
+
         if rc != 0:
             raise Exception("Error {} while deleting object".format(rc))
 

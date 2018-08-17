@@ -152,8 +152,15 @@ class SageDataset(BackendDataset):
 
     def del_chunk(self, idx):
         log.debug("deleting datachunk from %s with idx:%s", self.name, idx)
-        self.connection.clovis.delete_object_chunk(self.name,
-                                                   self._idx2name(idx))
+        try:
+            self.connection.clovis.delete_object_chunk(self.name,
+                                                       self._idx2name(idx))
+        except KeyError:
+            logging.debug('chunk %s with idx:%s was not found while deleting',
+                          self.name, idx)
+            return False
+
+        return True
 
 
 class SageDataChunk(BackendDataChunk):

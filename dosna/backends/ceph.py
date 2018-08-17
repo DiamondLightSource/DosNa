@@ -163,6 +163,8 @@ class CephDataset(BackendDataset):
     def del_chunk(self, idx):
         if self.has_chunk(idx):
             self.ioctx.remove_object(self._idx2name(idx))
+            return True
+        return False
 
 
 class CephDataChunk(BackendDataChunk):

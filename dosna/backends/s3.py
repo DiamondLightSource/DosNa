@@ -246,6 +246,8 @@ class S3Dataset(BackendDataset):
                 Bucket=bucketName(self._name),
                 Key=self._idx2name(idx)
             )
+            return True
+        return False
 
 
 class S3DataChunk(BackendDataChunk):
