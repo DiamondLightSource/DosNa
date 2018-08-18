@@ -7,7 +7,7 @@
 
 typedef unsigned long uint64_t;
 
-int init_clovis(char *laddr, char *ha_addr, char *prof_id, char *proc_fid, size_t block_size);
+int init_clovis(char *laddr, char *ha_addr, char *prof_id, char *proc_fid, size_t block_size, unsigned int tier);
 
 void fini_clovis(void);
 

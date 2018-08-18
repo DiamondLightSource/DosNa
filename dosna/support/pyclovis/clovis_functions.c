@@ -21,13 +21,33 @@ static struct m0_clovis_config clovis_conf;
 static struct m0_idx_dix_config dix_conf;
 
 static size_t   clovis_block_size = 4096;
+static unsigned int tier_selection = 0;
 
 extern struct m0_addb_ctx m0_clovis_addb_ctx;
+
+static struct m0_fid TIER2 = (struct m0_fid) {  // Tier 2 is SSD Pool
+	.f_container = 0x6f00000000000001,
+	.f_key = 0x3f8
+};
+
+static struct m0_fid TIER3 = (struct m0_fid) {  // Tier 3 is HDD Pool
+	.f_container = 0x6f00000000000001,
+	.f_key = 0x426
+};
+
+static struct m0_fid *const TIERS[] = {
+	NULL, // Tier 0 and 1 are 
+	NULL, // the same as the default one
+	&TIER2,
+	&TIER3
+};
+
+static const size_t N_TIER = sizeof(TIERS) / sizeof(TIERS[0]);
 
 
 int
 init_clovis(char *laddr, char *ha_addr, char *prof_id, char *proc_fid,
-	    size_t block_size)
+	    size_t block_size, unsigned int tier)
 {
 	int             rc;
 
@@ -49,6 +69,11 @@ init_clovis(char *laddr, char *ha_addr, char *prof_id, char *proc_fid,
 	};
 
 	clovis_block_size = block_size;
+
+	if (tier >= N_TIER) {
+		return EPERM;
+	}
+	tier_selection = tier;
 
 	rc = m0_clovis_init(&clovis_instance, &clovis_conf, true);
 
@@ -204,7 +229,7 @@ create_object(uint64_t high_id, uint64_t low_id)
 	if (rc >= 0)		// object already exists
 		return 1;
 
-	m0_clovis_entity_create(NULL, &obj.ob_entity, &ops[0]);
+	m0_clovis_entity_create(TIERS[tier_selection], &obj.ob_entity, &ops[0]);
 	m0_clovis_op_launch(ops, ARRAY_SIZE(ops));
 
 	rc = m0_clovis_op_wait(ops[0],

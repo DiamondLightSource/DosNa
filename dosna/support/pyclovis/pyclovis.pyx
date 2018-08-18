@@ -10,7 +10,7 @@ cdef extern from "Python.h":
 cdef extern from "clovis_functions.h":
     ctypedef unsigned long uint64_t
     int init_clovis(char * laddr, char * ha_addr, char * prof_id,
-                    char * proc_fid, size_t block_size)
+                    char * proc_fid, size_t block_size, unsigned int tier)
     int write_object(uint64_t high_id, uint64_t low_id,
                      char *buffer, size_t length)
     int read_object(uint64_t high_id, uint64_t low_id, char *buffer,
@@ -23,7 +23,7 @@ cdef extern from "clovis_functions.h":
 cdef:
     uint64_t _METADATA_CHUNK_ID = 0xffffffffffffffff
 
-REQUIRED_OPTIONS = ['laddr', 'ha_addr', 'prof_id', 'proc_fid', 'block_size']
+REQUIRED_OPTIONS = ['laddr', 'ha_addr', 'prof_id', 'proc_fid', 'block_size', 'tier']
 
 log = logging.getLogger(__name__)
 
@@ -55,12 +55,13 @@ class Clovis:
         # parse key=val lines
         with file(conffile) as file_handle:
             for line in file_handle:
-                key, val = line.split('=')
-                if key.strip() == "":
+                if "=" not in line or line.startswith("#"):
                     continue
+                key, val = line.split('=')
                 self.options[key.strip()] = val.strip()
         self._validate_options()
         self.options['block_size'] = int(self.options['block_size'])
+        self.options['tier'] = int(self.options['tier'])
 
     def _validate_options(self):
         for option in REQUIRED_OPTIONS:
@@ -84,7 +85,7 @@ class Clovis:
         log.info("Initializing clovis with options: %s", self.options)
         rc = init_clovis(self.options['laddr'], self.options['ha_addr'],
                          self.options['prof_id'], self.options['proc_fid'],
-                         self.options['block_size'])
+                         self.options['block_size'], self.options['tier'])
 
         if rc:
             raise Exception("Error {} while initialising Clovis".format(rc))
