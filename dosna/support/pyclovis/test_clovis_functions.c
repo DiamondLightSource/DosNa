@@ -97,7 +97,7 @@ int main() {
 	int rc;
 	load_config();
 	rc = init_clovis(clovis_local_addr, clovis_ha_addr, clovis_prof,
-			clovis_proc_fid, clovis_block_size);
+			clovis_proc_fid, clovis_block_size, tier);
 	assert(rc == 0);
 	test_write_and_read_object();
 	test_exist_object();
