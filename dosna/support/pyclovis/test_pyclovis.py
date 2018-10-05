@@ -11,15 +11,15 @@ TEST_OBJECT_NAME = "test-object-102"
 TEST_METADATA = {"length": 20, "name": TEST_OBJECT_NAME}
 TEST_DATA_LEN = 100
 TEST_CHUNK_ID = 0
-TEST_CONFIG_FILE = "pyclovis_test.conf"
 
 
 class PyclovisTest(unittest.TestCase):
     clovis = None
+    TEST_CONFIG_FILE = "pyclovis.conf"
 
     @classmethod
     def setUpClass(cls):
-        cls.clovis = Clovis(conffile=TEST_CONFIG_FILE)
+        cls.clovis = Clovis(conffile=cls.TEST_CONFIG_FILE)
         log.info("Connecting ...\n")
         cls.clovis.connect()
         log.info("Creating object metadata for %s\n", TEST_OBJECT_NAME)

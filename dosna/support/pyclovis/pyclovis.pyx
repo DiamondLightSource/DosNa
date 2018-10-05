@@ -41,7 +41,7 @@ class Clovis:
         self._process_parameters(conffile)
         self.is_connected = False
 
-    def _process_parameters(self, conffile="clovis.conf"):
+    def _process_parameters(self, conffile="pyclovis.conf"):
         self.options = {}
         self.conffile = conffile
         if conffile is not None:

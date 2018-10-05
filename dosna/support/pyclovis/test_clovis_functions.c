@@ -14,7 +14,8 @@ char clovis_local_addr[LINE_BUF_SIZE];
 char clovis_ha_addr[LINE_BUF_SIZE];
 char clovis_prof[LINE_BUF_SIZE];
 char clovis_proc_fid[LINE_BUF_SIZE];
-char rc_filename[] = "clovis_test_config";
+char rc_filename[] = "sagerc";
+unsigned int tier = 0;
 
 int test_write_and_read_object() {
 	char *buff;
