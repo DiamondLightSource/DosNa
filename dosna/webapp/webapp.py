@@ -58,6 +58,8 @@ def display_string_object(pool,obj):
     object_string = str(object_string).replace('  ',' ')
     object_string=object_string.replace('[','<br>')
     object_string=object_string.replace(']','<br>')
+    ioctx.close()
+    cluster.shutdown()
     return render_template('objectString.html',obj=obj,object_string=object_string)
 
 # Display object as a image
