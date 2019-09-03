@@ -35,10 +35,10 @@ def list_object(pool):
     # Looping over objects
     for ob in objects:
         try:	
-            if (str(ob.key).__contains__('*')):
+            if (str(ob.key).__contains__('/')):
                 mainObj += "<a href= /display/string/"+pool+"/"+ str(ob.key)+ ">"+ str(ob.key)+ "</a> <br>"	
             else:
-                metaObj += "<b>Name: </b>"+ str(ob.key) +  " <b>Contents: </b>" + str(ob.read()) +" <b>Data type: </b>" +  str(ob.get_xattr('dtype')).replace('<','') + " <b> Shape:</b>"+ ob.get_xattr('shape') + "<br>"
+                metaObj += "<b>Name: </b>"+ "<a href = /display/img/"+pool+"/"+str(ob.key) + ">" +str(ob.key) + "</a> <b>Contents: </b>" + str(ob.read()) +" <b>Data type: </b>" +  str(ob.get_xattr('dtype')).replace('<','') + " <b> Shape:</b>"+ ob.get_xattr('shape') + "<br>"
         except:
             pass	
     ioctx.close()
