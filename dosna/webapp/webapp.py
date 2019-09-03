@@ -8,7 +8,7 @@ import rados
 import dosna as dn
 
 from PIL import Image  
-
+BACKEND = 'ceph'
 def parse_args():
     parser = argparse.ArgumentParser(description='Webapp')
     parser.add_argument('--connection-options', dest='connection_options',
@@ -48,7 +48,17 @@ def list_object(pool):
 # Display object as a string
 @app.route('/display/string/<pool>/<obj>')
 def display_string_object(pool,obj):
-    return render_template('objectString.html',obj=obj)
+    np.set_printoptions(threshold=np.inf)
+    cluster = rados.Rados(**connection_config)
+    cluster.connect()
+    ioctx = cluster.open_ioctx(str(pool))
+    object_string = np.frombuffer(ioctx.read(str(obj)))
+    object_shape = int(np.sqrt(object_string.size))
+    object_string = object_string.reshape(object_shape,object_shape)
+    object_string = str(object_string).replace('  ',' ')
+    object_string=object_string.replace('[','<br>')
+    object_string=object_string.replace(']','<br>')
+    return render_template('objectString.html',obj=obj,object_string=object_string)
 
 # Display object as a image
 @app.route('/display/img/<pool>/<obj>')
