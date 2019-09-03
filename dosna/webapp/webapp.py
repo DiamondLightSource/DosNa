@@ -30,14 +30,15 @@ def list_object(pool):
     mainObj= '' # The actual object
     cluster = rados.Rados(**connection_config)
     cluster.connect()
-	ioctx = cluster.open_ioctx(str(pool))
+    ioctx = cluster.open_ioctx(str(pool))
+    objects = ioctx.list_objects()
     # Looping over objects
     for ob in objects:
         try:	
             if (str(ob.key).__contains__('*')):
-                mainObjData += "<a href= /display/string/"+pool+"/"+ str(ob.key)+ ">"+ str(ob.key)+ "</a> <br>"	
+                mainObj += "<a href= /display/string/"+pool+"/"+ str(ob.key)+ ">"+ str(ob.key)+ "</a> <br>"	
             else:
-                headObjData += "<b>Name: </b>"+ str(ob.key) +  " <b>Contents: </b>" + str(ob.read()) +" <b>Data type: </b>" +  str(ob.get_xattr('dtype')).replace('<','') + " <b> Shape:</b>"+ ob.get_xattr('shape') + "<br>"
+                metaObj += "<b>Name: </b>"+ str(ob.key) +  " <b>Contents: </b>" + str(ob.read()) +" <b>Data type: </b>" +  str(ob.get_xattr('dtype')).replace('<','') + " <b> Shape:</b>"+ ob.get_xattr('shape') + "<br>"
         except:
             pass	
     ioctx.close()
@@ -56,6 +57,6 @@ def display_image_object(pool,obj):
 
 if __name__ == '__main__':
     args = parse_args()
-	connection_config = {}
-	connection_config.update(dict(item.split('=') for item in args.connection_options))
-	app.run(debug=True, host='0.0.0.0')
+    connection_config = {}
+    connection_config.update(dict(item.split('=') for item in args.connection_options))
+    app.run(debug=True, host='0.0.0.0')
