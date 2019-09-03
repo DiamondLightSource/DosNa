@@ -65,7 +65,16 @@ def display_string_object(pool,obj):
 # Display object as a image
 @app.route('/display/img/<pool>/<obj>')
 def display_image_object(pool,obj):
-    return render_template('objectImage.html',obj=obj)
+    dn.use_backend(BACKEND)
+    cluster = dn.Connection(str(pool),**connection_config)
+    cluster.connect()
+    object_data = cluster.get_dataset(str(obj))
+    img = Image.fromarray(object_data[:,:,0],'RGB')  
+    cluster.disconnect()
+    fileLocation = 'static/' +str(obj)+'.jpeg'
+    filename = obj+'.jpeg'
+    img.save(fileLocation)
+    return render_template('objectImage.html',filename=filename,obj=obj)
 
 if __name__ == '__main__':
     args = parse_args()
