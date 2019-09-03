@@ -38,7 +38,7 @@ def list_object(pool):
     for ob in objects:
         try:	
             if (str(ob.key).__contains__('/')):
-                mainObj += "<a href= /display/string/"+pool+"/"+ str(ob.key)+ ">"+ str(ob.key)+ "</a> <br>"	
+                mainObj += str(ob.key)+"<br>"
             else:
                 metaObj += "<b>Name: </b>"+ "<a href = /display/img/"+pool+"/"+str(ob.key) + ">" +str(ob.key) + "</a> <b>Contents: </b>" + str(ob.read()) +" <b>Data type: </b>" +  str(ob.get_xattr('dtype')).replace('<','') + " <b> Shape:</b>"+ ob.get_xattr('shape') + "<br>"
         except:
