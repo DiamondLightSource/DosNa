@@ -26,8 +26,23 @@ def index():
 # Listing objects inside pool
 @app.route('/list/obj/<pool>')
 def list_object(pool):
-
-    return render_template('listObjects.html')
+    metaObj= '' # The meta object
+    mainObj= '' # The actual object
+    cluster = rados.Rados(**connection_config)
+    cluster.connect()
+	ioctx = cluster.open_ioctx(str(pool))
+    # Looping over objects
+    for ob in objects:
+        try:	
+            if (str(ob.key).__contains__('*')):
+                mainObjData += "<a href= /display/string/"+pool+"/"+ str(ob.key)+ ">"+ str(ob.key)+ "</a> <br>"	
+            else:
+                headObjData += "<b>Name: </b>"+ str(ob.key) +  " <b>Contents: </b>" + str(ob.read()) +" <b>Data type: </b>" +  str(ob.get_xattr('dtype')).replace('<','') + " <b> Shape:</b>"+ ob.get_xattr('shape') + "<br>"
+        except:
+            pass	
+    ioctx.close()
+    cluster.shutdown()
+    return render_template('listObjects.html',pool=pool,metaObj=metaObj,mainObj=mainObj)
 
 # Display object as a string
 @app.route('/display/string/<pool>/<obj>')
