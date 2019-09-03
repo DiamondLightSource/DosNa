@@ -82,6 +82,29 @@ def display_image_object(pool,obj):
         cluster.disconnect()
         return render_template('objectImage.html',error=ERROR,obj=obj)
 
+@app.route('/display/img/<pool>/<obj>/slice/<xslice>/<yslice>/<zslice>')
+def display_image_object_slice(pool,obj,xslice,yslice,zslice):
+    dn.use_backend(BACKEND)
+    xslice = re.split(":",xslice)
+    xslice = [int(i) for i in xslice]
+    yslice = re.split(":",yslice)
+    yslice = [int(i) for i in yslice]
+    zslice = re.split(":",zslice)
+    zslice = [int(i) for i in zslice]
+    cluster = dn.Connection(str(pool),**connection_config)
+    cluster.connect()
+    try:
+        object_data = cluster.get_dataset(str(obj))
+        img = Image.fromarray(object_data[xslice[0]:xslice[1],yslice[0]:yslice[1] ,zslice[0]:zslice[1]],'RGB')  
+        cluster.disconnect()
+        fileLocation = 'static/' +str(obj)+'.jpeg'
+        filename = obj+'.jpeg'
+        img.save(fileLocation)
+        return render_template('objectImage.html',filename=filename,obj=obj)
+    except:
+        cluster.disconnect()
+        return render_template('objectImage.html',error=ERROR,obj=obj)
+
 if __name__ == '__main__':
     args = parse_args()
     connection_config = {}
