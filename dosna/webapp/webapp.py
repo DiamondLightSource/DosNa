@@ -2,6 +2,7 @@
 """ Web app for dosna over ceph to see and display objects"""
 from flask import Flask, render_template
 import argparse
+import re
 import numpy as np
 
 import rados
@@ -9,6 +10,7 @@ import dosna as dn
 
 from PIL import Image  
 BACKEND = 'ceph'
+ERROR = 'Object not found'
 def parse_args():
     parser = argparse.ArgumentParser(description='Webapp')
     parser.add_argument('--connection-options', dest='connection_options',
@@ -68,13 +70,17 @@ def display_image_object(pool,obj):
     dn.use_backend(BACKEND)
     cluster = dn.Connection(str(pool),**connection_config)
     cluster.connect()
-    object_data = cluster.get_dataset(str(obj))
-    img = Image.fromarray(object_data[:,:,0],'RGB')  
-    cluster.disconnect()
-    fileLocation = 'static/' +str(obj)+'.jpeg'
-    filename = obj+'.jpeg'
-    img.save(fileLocation)
-    return render_template('objectImage.html',filename=filename,obj=obj)
+    try:
+        object_data = cluster.get_dataset(str(obj))
+        img = Image.fromarray(object_data[:,:,0],'RGB')  
+        cluster.disconnect()
+        fileLocation = 'static/' +str(obj)+'.jpeg'
+        filename = obj+'.jpeg'
+        img.save(fileLocation)
+        return render_template('objectImage.html',filename=filename,obj=obj)
+    except:
+        cluster.disconnect()
+        return render_template('objectImage.html',error=ERROR,obj=obj)
 
 if __name__ == '__main__':
     args = parse_args()
