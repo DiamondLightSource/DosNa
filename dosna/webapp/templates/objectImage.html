@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<h1>Object:</h1>
+<h1>Object:{{obj | safe}} </h1>
+<img src="{{url_for('static', filename=filename)}}" alt="{{error|safe}}">
 </body>
 </html>
