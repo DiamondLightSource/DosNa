@@ -7,10 +7,10 @@ fi
 SUBNET="172.18.0.0/24"
 IP="172.18.0.2"
 TIMEOUT=30
-docker pull ceph/demo
+docker pull ceph/daemon
 docker network create --subnet $SUBNET testnet
 echo "Starting Ceph"
-container=$(docker run -d --ip $IP --net=testnet -e MON_IP=$IP -e MON_NAME=mon_node -e CEPH_PUBLIC_NETWORK=${SUBNET} ceph/demo)
+container=$(docker run -d --ip $IP --net=testnet -e MON_IP=$IP -e MON_NAME=mon_node -e CEPH_PUBLIC_NETWORK=${SUBNET} ceph/daemon)
 current_iteration=0
 while true; do
     ceph_status=$(docker exec $container ceph status 2>&1)
