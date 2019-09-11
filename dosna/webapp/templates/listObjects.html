@@ -1,0 +1,19 @@
+<html>
+<head>
+<meta http-equiv="refresh" content="1"> 
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='styles/columns.css')}}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <h1>Objects {{pool | safe}}</h1>
+    <div class="row">
+        <div class="column" style="background-color:#aaa;">
+            <h2>Metaobject</h2>
+            <p>{{metaObj | safe}}</p>
+        </div>
+        <div class="column" style="background-color:#bbb;">
+            <h2>Actual Object</h2>
+            <p>{{mainObj | safe}}</p>
+        </div>
+    </div>
+</body>
