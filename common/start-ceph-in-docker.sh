@@ -1,5 +1,7 @@
 #!/bin/bash
 : ${BACKEND:=ceph}
+ceph --version
+rados --version
 if [[ "$BACKEND" != "ceph" ]]; then
     echo "Ceph is not required for this configuration"
     exit 0
@@ -10,11 +12,12 @@ TIMEOUT=30
 docker pull ceph/daemon
 docker network create --subnet $SUBNET testnet
 echo "Starting Ceph"
-container=$(docker run -d --ip $IP --net=testnet -e MON_IP=$IP -e MON_NAME=mon_node -e CEPH_PUBLIC_NETWORK=${SUBNET} ceph/daemon)
+CUID="$(date +%s)"
+container=$(docker run -d --ip $IP --net=testnet -e MON_IP=$IP -e MON_NAME=mon_node -e CEPH_PUBLIC_NETWORK=${SUBNET} -e CEPH_DEMO_UID=${CUID} -e CEPH_DEMO_ACCESS_KEY=${CUID} -e CEPH_DEMO_SECRET_KEY=${CUID} -e CEPH_DEMO_BUCKET=${CUID}  ceph/daemon demo)
 current_iteration=0
 while true; do
     ceph_status=$(docker exec $container ceph status 2>&1)
-    if [[ "$ceph_status" == *"HEALTH_OK"* ]]; then
+    if [[ "$ceph_status" == *"HEALTH_OK"* ]] || [[ "$ceph_status" == *"HEALTH_WARN"* ]]; then
         break
     fi
     if [[ "$ceph_status" == *"not running"* ]]; then
@@ -32,6 +35,6 @@ echo "Ceph started"
 mkdir -p /etc/ceph
 docker cp ${container}:/etc/ceph/ceph.conf .
 docker cp ${container}:/etc/ceph/ceph.client.admin.keyring /etc/ceph
+docker exec ${container} ceph osd pool create test-dosna 1 1 replicated
 chmod +r /etc/ceph/ceph.client.admin.keyring
 chmod +r ceph.conf
-rados mkpool test-dosna
