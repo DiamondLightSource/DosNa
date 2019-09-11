@@ -122,7 +122,6 @@ def display_image_object(pool, obj):
 def display_image_object_slice(pool, obj, xslice, yslice, zslice):
     """ Display object as an image with slice specified """
     dn.use_backend(BACKEND)
-    slices = [xslice, yslice, zslice]
     xslice = re.split(":", xslice)
     xslice = [int(i) for i in xslice]
     yslice = re.split(":", yslice)
