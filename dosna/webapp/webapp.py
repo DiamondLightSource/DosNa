@@ -102,8 +102,9 @@ def display_image_object(pool, obj):
         object_data = cluster.get_dataset(str(obj))
         img = Image.fromarray(object_data[:, :, 0], 'RGB')
         cluster.disconnect()
-        fileLocation = 'static/' + str(obj) + '.jpeg'
-        filename = obj + '.jpeg'
+        fileFolder = 'static/'
+        filename = str(obj) + '.jpeg'
+        fileLocation = fileFolder + filename
         img.save(fileLocation)
         return render_template('objectImage.html', filename=filename, obj=obj)
     except (rados.Error,
@@ -137,8 +138,13 @@ def display_image_object_slice(pool, obj, xslice, yslice, zslice):
                             zslice[0]:zslice[1]],
                             'RGB')
         cluster.disconnect()
-        fileLocation = 'static/' + str(obj) + '.jpeg'
-        filename = obj + '.jpeg'
+        fileFolder = 'static/'
+        filename = (str(obj) + "#"
+                    + str(xslice[0]) + ":" + str(xslice[1]) + "#"
+                    + str(yslice[0]) + ":" + str(yslice[1]) + "#"
+                    + str(zslice[0]) + ":" + str(zslice[1])
+                    + '.jpeg')
+        fileLocation = fileFolder + filename
         img.save(fileLocation)
         return render_template('objectImage.html', filename=filename, obj=obj)
     except (rados.Error,
