@@ -19,6 +19,8 @@ def parse_args():
                         nargs='+', default=[],
                         help='Cluster options using the format: '
                              'key1=val1 [key2=val2...]')
+    parser.add_argument('--image-color', dest='image_color', default='L',
+                        help='Select a colour type to use (RGB | L)')
     return parser.parse_args()
 
 
@@ -100,7 +102,8 @@ def display_image_object(pool, obj):
     cluster.connect()
     try:
         object_data = cluster.get_dataset(str(obj))
-        img = Image.fromarray(object_data[:, :, 0], 'RGB')
+        objectShape = object_data.instance.shape
+        img = Image.fromarray(object_data[:, (objectShape[1]/2), :], *image_colors)
         cluster.disconnect()
         fileFolder = 'static/'
         filename = str(obj) + '.jpeg'
@@ -136,7 +139,7 @@ def display_image_object_slice(pool, obj, xslice, yslice, zslice):
                             xslice[0]:xslice[1],
                             yslice[0]:yslice[1],
                             zslice[0]:zslice[1]],
-                            'RGB')
+                            *image_colors)
         cluster.disconnect()
         fileFolder = 'static/'
         filename = (str(obj) + "#"
@@ -160,6 +163,8 @@ def display_image_object_slice(pool, obj, xslice, yslice, zslice):
 
 if __name__ == '__main__':
     args = parse_args()
+    image_colors = []
+    image_colors.append(args.image_color)
     connection_config = {}
     connection_config.update(dict(
         item.split('=') for item in args.connection_options))
