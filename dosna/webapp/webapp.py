@@ -103,7 +103,8 @@ def display_image_object(pool, obj):
     try:
         object_data = cluster.get_dataset(str(obj))
         objectShape = object_data.instance.shape
-        img = Image.fromarray(object_data[:, (objectShape[1]/2), :], *image_colors)
+        img = Image.fromarray(object_data[:, (objectShape[1]/2), :],
+                              *image_colors)
         cluster.disconnect()
         fileFolder = 'static/'
         filename = str(obj) + '.jpeg'
