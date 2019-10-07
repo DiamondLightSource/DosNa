@@ -144,7 +144,7 @@ def display_image_object_slice(pool, obj, xslice, yslice, zslice):
 
 
 def makeImage(xslice, yslice, zslice, object_data, obj):
-    """ Converts object numpy array to an image """"
+    """ Converts object numpy array to an image """
     fileFolder = 'static/'
     if (':' in xslice and ':' in yslice):
         xslice = re.split(":", xslice)
