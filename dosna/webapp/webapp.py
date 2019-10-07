@@ -19,8 +19,6 @@ def parse_args():
                         nargs='+', default=[],
                         help='Cluster options using the format: '
                              'key1=val1 [key2=val2...]')
-    parser.add_argument('--image-color', dest='image_color', default='L',
-                        help='Select a colour type to use (RGB | L)')
     return parser.parse_args()
 
 
@@ -201,8 +199,6 @@ def makeImage(xslice, yslice, zslice, object_data, obj):
 
 if __name__ == '__main__':
     args = parse_args()
-    image_colors = []
-    image_colors.append(args.image_color)
     connection_config = {}
     connection_config.update(dict(
         item.split('=') for item in args.connection_options))
