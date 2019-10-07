@@ -7,8 +7,8 @@ import numpy as np
 
 import rados
 import dosna as dn
-
-from PIL import Image
+import matplotlib.image as plt
+import matplotlib
 BACKEND = 'ceph'
 ERROR = 'Object not found'
 
@@ -97,19 +97,17 @@ def display_string_object(pool, obj):
 @app.route('/display/img/<pool>/<obj>')
 def display_image_object(pool, obj):
     """ Display object as a image """
+    fileFolder = 'static/'
+    filename = str(obj) + '.jpeg'
+    fileLocation = fileFolder + filename
     dn.use_backend(BACKEND)
     cluster = dn.Connection(str(pool), **connection_config)
     cluster.connect()
     try:
         object_data = cluster.get_dataset(str(obj))
         objectShape = object_data.instance.shape
-        img = Image.fromarray(object_data[:, (objectShape[1]/2), :],
-                              *image_colors)
+        plt.imsave(fileLocation, object_data[:, (objectShape[1]/2), :],cmap=matplotlib.cm.gray)       
         cluster.disconnect()
-        fileFolder = 'static/'
-        filename = str(obj) + '.jpeg'
-        fileLocation = fileFolder + filename
-        img.save(fileLocation)
         return render_template('objectImage.html', filename=filename, obj=obj)
     except (rados.Error,
             rados.IOError,
@@ -126,30 +124,12 @@ def display_image_object(pool, obj):
 def display_image_object_slice(pool, obj, xslice, yslice, zslice):
     """ Display object as an image with slice specified """
     dn.use_backend(BACKEND)
-    xslice = re.split(":", xslice)
-    xslice = [int(i) for i in xslice]
-    yslice = re.split(":", yslice)
-    yslice = [int(i) for i in yslice]
-    zslice = re.split(":", zslice)
-    zslice = [int(i) for i in zslice]
     cluster = dn.Connection(str(pool), **connection_config)
     cluster.connect()
     try:
         object_data = cluster.get_dataset(str(obj))
-        img = Image.fromarray(object_data[
-                            xslice[0]:xslice[1],
-                            yslice[0]:yslice[1],
-                            zslice[0]:zslice[1]],
-                            *image_colors)
+        filename = makeImage(xslice,yslice,zslice,object_data,obj)
         cluster.disconnect()
-        fileFolder = 'static/'
-        filename = (str(obj) + "#"
-                    + str(xslice[0]) + ":" + str(xslice[1]) + "#"
-                    + str(yslice[0]) + ":" + str(yslice[1]) + "#"
-                    + str(zslice[0]) + ":" + str(zslice[1])
-                    + '.jpeg')
-        fileLocation = fileFolder + filename
-        img.save(fileLocation)
         return render_template('objectImage.html', filename=filename, obj=obj)
     except (rados.Error,
             rados.IOError,
@@ -160,6 +140,50 @@ def display_image_object_slice(pool, obj, xslice, yslice, zslice):
             dn.backends.base.DatasetNotFoundError) as e:
         cluster.disconnect()
         return render_template('objectImage.html', error=ERROR, obj=obj)
+
+def makeImage(xslice,yslice,zslice,object_data,obj):
+    fileFolder = 'static/'
+    if (':' in xslice and ':' in yslice):
+        xslice = re.split(":", xslice)
+        xslice = [int(i) for i in xslice]
+        yslice = re.split(":", yslice)
+        yslice = [int(i) for i in yslice]        
+        zslice = int(zslice)
+        filename = (str(obj) + "#"
+                    + str(xslice[0]) + ":" + str(xslice[1]) + "#"
+                    + str(yslice[0]) + ":" + str(yslice[1]) + "#"
+                    + str(zslice)
+                    + '.png')
+        fileLocation = fileFolder + filename
+        plt.imsave(fileLocation, object_data[xslice[0]:xslice[1],yslice[0]:yslice[1],zslice],cmap=matplotlib.cm.gray)        
+    elif (':' in xslice and ':' in zslice):
+        xslice = re.split(":", xslice)
+        xslice = [int(i) for i in xslice]
+        yslice = int(yslice)
+        zslice = re.split(":", zslice)
+        zslice = [int(i) for i in zslice] 
+        filename = (str(obj) + "#"
+                    + str(xslice[0]) + ":" + str(xslice[1]) + "#"
+                    + str(yslice) + "#"
+                    + str(zslice[0]) + ":" + str(zslice[1])
+                    + '.png')
+        fileLocation = fileFolder + filename                    
+        plt.imsave(fileLocation, object_data[xslice[0]:xslice[1],yslice,zslice[0]:zslice[1]],cmap=matplotlib.cm.gray)
+    elif  (':' in yslice and ':' in zslice):
+        xslice = int(xslice)
+        yslice = re.split(":", yslice)
+        yslice = [int(i) for i in yslice]
+        zslice = re.split(":", zslice)
+        zslice = [int(i) for i in zslice]
+        filename = (str(obj) + "#"
+                    + str(xslice) + "#"
+                    + str(yslice[0]) + ":" + str(yslice[1]) + "#"
+                    + str(zslice[0]) + ":" + str(zslice[1])
+                    + '.png')
+        fileLocation = fileFolder + filename
+        plt.imsave(fileLocation, object_data[xslice,yslice[0]:yslice[1],zslice[0]:zslice[1]],cmap=matplotlib.cm.gray)
+    return filename
+
 
 
 if __name__ == '__main__':
