@@ -20,6 +20,27 @@ class MemConnection(BackendConnection):
     def __init__(self, *args, **kwargs):
         super(MemConnection, self).__init__(*args, **kwargs)
         self.datasets = {}
+        self.trees = {}
+        
+    def create_tree(self, name):
+        self.trees[name] = {}
+        backendtree = MemTree(self, name)
+        self.trees[name][name] = backendtree
+        return backendtree
+    
+    def get_tree(self, name):
+        if not self.has_tree(name):
+            raise BackendTreeNotFoundError("Backend `%s` does not exist")
+        return self.trees[name][name]
+
+    def has_tree(self, name):
+        return name in self.trees
+
+    def del_tree(self, name):
+        if not self.has_dataset(name):
+            raise BackendTreeNotFoundError("Backend `%s` does not exist")
+        log.debug("Removing Backend `%s`", name)
+        del self.trees[name]
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
@@ -58,6 +79,85 @@ class MemConnection(BackendConnection):
         if not self.has_dataset(name):
             raise DatasetNotFoundError('Dataset `%s` does not exist' % name)
         log.debug('Removing Dataset `%s`', name)
+        del self.datasets[name]
+        
+class MemTree: # TODO: add the BackendTree
+    """
+    A Memory Tree represents a dictionary of dictionaries
+    """
+    
+    def __init__(self, connection_handler, name, *args, **kwargs):
+        # super(MemTree, self).__init__(*args, **kwargs)
+        self.connection_handler = connection_handler
+        self.name = name
+        self.metadata = {}
+        self.datasets = {}
+        
+    def create_tree(self, name, connection_handler):
+        log.debug("Creating Tree `%s`", name)
+        tree = MemTree(self, name)
+        """
+        def _recurse(treeobject):
+            for key, value in treeobject.items():
+                if key == self.name:
+                    treeobject[self.name][treename] = {}
+                    for k, v in value.items():
+                        if k == treename:
+                            value[treename] = {}
+                            value[treename][treename] = tree
+                else:
+                    if isinstance(value, dict):
+                        _recurse(value)
+            return treeobject
+
+        datadict = _recurse(connection.trees)
+        """
+        return tree
+    
+    def create_dataset(
+        self,
+        name,
+        shape=None,
+        dtype=np.float32,
+        fillvalue=0,
+        data=None,
+        chunk_size=None,
+    ):
+
+        if not ((shape is not None and dtype is not None) or data is not None):
+            raise Exception("Provide `shape` and `dtype` or `data`")
+        if self.has_dataset(name):
+            raise Exception("Dataset `%s` already exists" % name)
+
+        if data is not None:
+            shape = data.shape
+            dtype = data.dtype
+
+        if chunk_size is None:
+            chunk_size = shape
+
+        chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size)).astype(int)
+
+        log.debug("Creating Dataset `%s`", name)
+        self.datasets[name] = None  # Key `name` has to exist
+        dataset = MemDataset(
+            self, name, shape, dtype, fillvalue, chunk_grid, chunk_size
+        )
+        self.datasets[name] = dataset
+        return dataset
+
+    def get_dataset(self, name):
+        if not self.has_dataset(name):
+            raise DatasetNotFoundError("Dataset `%s` does not exist")
+        return self.datasets[name]
+
+    def has_dataset(self, name):
+        return name in self.datasets
+
+    def del_dataset(self, name):
+        if not self.has_dataset(name):
+            raise DatasetNotFoundError("Dataset `%s` does not exist")
+        log.debug("Removing Dataset `%s`", name)
         del self.datasets[name]
 
 
