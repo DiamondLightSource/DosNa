@@ -50,9 +50,9 @@ class DatasetTest(unittest.TestCase):
         log.info('DatasetTest: %s, %s, %s',
                  BACKEND, ENGINE, CONNECTION_CONFIG)
 
-        self.fake_tree = 'NotATree'
-        self.tree = self.connection_handle.create_tree(self.fake_tree)
-        
+        self.fake_node = 'NotANode'
+        self.node = self.connection_handle.create_node(self.fake_node)
+    """
     def tearDown(self):
         if self.connection_handle.has_tree(self.fake_tree):
             self.connection_handle.del_tree(self.fake_tree)
@@ -61,9 +61,6 @@ class DatasetTest(unittest.TestCase):
         self.assertTrue(self.connection_handle.has_tree(self.fake_tree))
         self.assertFalse(self.connection_handle.has_tree(
             'NonExistingTree'))
-        
-    
-    """
     
     def test_del_non_existing_dataset(self):
         with self.assertRaises(DatasetNotFoundError):

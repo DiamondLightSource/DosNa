@@ -53,6 +53,19 @@ class BackendConnection(object):
 
     def __contains__(self, name):
         return self.has_dataset(name)
+    
+    def create_group(self):
+        raise NotImplementedError('`create_group` not implemented '
+                                  'for this backend')
+    def get_group(self):
+        raise NotImplementedError('`get_group` not implemented '
+                                  'for this backend')
+    def has_group(self):
+        raise NotImplementedError('`has_group` not implemented '
+                                  'for this backend')
+    def del_group(self):
+        raise NotImplementedError('`del_group` not implemented '
+                                  'for this backend')
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
@@ -71,6 +84,59 @@ class BackendConnection(object):
         """Remove dataset metadata only"""
         raise NotImplementedError('`del_dataset` not implemented '
                                   'for this backend')
+        
+class BackendGroup(object):
+    
+    def __init__(self, name, *args, **kwargs):
+        
+        if not connection.has_group(name):
+            raise Exception('Wrong initialization of a Dataset')
+        self._name = name
+        # TODO: more parameters?
+    
+    @property
+    def name(self):
+        return self._name
+    
+    def __getitem__(self, name):
+        return self.get_dataset(name)
+    
+    #TODO: two separate methods for the group and the dataset?
+    
+    def __contains__(self, name):
+        return self.has_dataset(name)
+    
+    def create_group(self):
+        raise NotImplementedError('`create_group` not implemented '
+                                  'for this backend')
+    def get_group(self):
+        raise NotImplementedError('`get_group` not implemented '
+                                  'for this backend')
+    def has_group(self):
+        raise NotImplementedError('`has_group` not implemented '
+                                  'for this backend')
+    def del_group(self):
+        raise NotImplementedError('`del_group` not implemented '
+                                  'for this backend')
+    
+    def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
+                       data=None, chunk_size=None):
+        raise NotImplementedError('`create_dataset` not implemented '
+                                  'for this backend')
+
+    def get_dataset(self, name):
+        raise NotImplementedError('`get_dataset` not implemented '
+                                  'for this backend')
+
+    def has_dataset(self, name):
+        raise NotImplementedError('`has_dataset` not implemented '
+                                  'for this backend')
+
+    def del_dataset(self, name):
+        """Remove dataset metadata only"""
+        raise NotImplementedError('`del_dataset` not implemented '
+                                  'for this backend')
+    
 
 
 class BackendDataset(object):
@@ -338,6 +404,8 @@ class BackendDataChunk(object):
 class ConnectionError(Exception):
     pass
 
-
 class DatasetNotFoundError(Exception):
+    pass
+
+class GroupNotFoundError(Exception):
     pass
