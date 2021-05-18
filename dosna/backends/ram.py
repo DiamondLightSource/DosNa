@@ -22,75 +22,49 @@ class MemConnection(BackendConnection):
     """
     A Memory Connection represents a dictionary.
     """
-
     def __init__(self, *args, **kwargs):
-        global graph
         super(MemConnection, self).__init__(*args, **kwargs)
         self.datasets = {}
-        self.trees = {}
+        self.links = {}
         
-    def create_node(self, location, path):
+    def create_group(self, path):
         """
-        Creates a new empty group and gives it a name
-        :param location: identifier of the file/group in a file with respect to which the new group is to be identified
-        :param path: string that provides wither an absolute path or a relative path to the new group
-                     Begins with a slash: absolute path indicating that it locates the new group from the root group of the HDF5 file.
-                     No slash: relative path is a path from that file's root group.
-                               when the location is a group, a relative path is a path from that group.
+        Creates a new empty group.
+        :param string that provides an absolute path or a relative path to the new group
         """
-        global graph
-        global vertices_no
-        
-        if path.startswith("/"):
-            log.info("Absolute path")
-        else:
-            log.info("Relative path")
+        if not path in self.links:
+            group = MemGroup(self, path)
+            link = MemLink(self, group, path)
+            self.links[path] = link
             
-        
-        if path in graph:
+            return group
+        else:
             raise Exception("Group", path, "already exists")
-        else:
-            vertices_no = vertices_no + 1
             
-            graph[path] = []
-            
-            node = MemGroup(self, path)
-            edge = random.choice(string.ascii_letters)
-            #self.link(self.name, path, edge)
-            
-            return node
     
-    def link(self, n1, n2, e):
-        global graph
-        if n1 not in graph:
-            raise Exception("Node", n1, "does not exist")
-        if n2 not in graph:
-            raise Exception("Node", n2, "does not exist")
-        else:
-            temp = [n2, e] # TODO: what is this?
-            graph[n1].append(e) #TODO: append e or the n2?
-        return e
-        
-    def create_tree(self, name):
-        self.trees[name] = {}
-        backendtree = MemTree(self, name)
-        self.trees[name][name] = backendtree
-        return backendtree
+    def get_group(self, path):
+        """
+        Return immediately attached groups to this group
+        """
+        if not self.has_group(path):
+            raise GroupNotFoundError("Group `%s` does not exist")
+        return self.links[path].target
     
-    def get_tree(self, name):
-        if not self.has_tree(name):
-            raise BackendTreeNotFoundError("Backend `%s` does not exist")
-        return self.trees[name][name]
-
-    def has_tree(self, name):
-        return name in self.trees
-
-    def del_tree(self, name):
-        if not self.has_dataset(name):
-            print("BackendTree not found") # TODO: Implement class
-        log.debug("Removing Backend `%s`", name)
-        del self.trees[name]
-
+    def has_group(self, path):
+        """
+        Return immediately attached groups to this group
+        """
+        return path in self.links
+    
+    def del_group(self, path):
+        """
+        Return immediately attached groups to this group
+        """
+        if not self.has_group(path):
+            raise GroupNotFoundError("Group `%s` does not exist")
+        log.debug('Removing Group `%s`', path)
+        del self.links[path].name
+    
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
 
@@ -131,27 +105,22 @@ class MemConnection(BackendConnection):
         del self.datasets[name]
         
 class MemLink():
-    def __init__(self, name, source, target):
-        self.name = name
+    def __init__(self, source, target, name):
         self.source = source
         self.target = target
+        self.name = name
         
 class MemGroup(BackendGroup):
     
-    def __init__(self, parent, name, *args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
+        
         super(MemGroup, self).__init__(name)
-        #self.name = name # TODO: full path to this group
-        self.parent = parent
-        # self.file = file # TODO: file instance in which this group resides
+        #self.name = name
+        #self.parent = parent
+        # self.connection = file
         self.links = {}
         self.attrs = {}
-        self.no_members = 0
-    
-    def __contains__(self, path):
-        if path in self.links:
-            return True
-        else:
-            return False
+        self.datasets = {}
     
     def keys(self):
         """
@@ -179,30 +148,66 @@ class MemGroup(BackendGroup):
             items[value.name] = value.target
         return items # TODO: implement this
     
-    def create_node(self, path):
+    def create_group(self, path):
         """
-        Creates a new empty group and gives it a name
+        Creates a new empty group.
+        :param string that provides an absolute path or a relative path to the new group
         """
         global graph
         global vertices_no
         
-        #if path.startswith("/"):
-        #    log.info("Absolute path")
-        #else:
-        #    log.info("Relative path"
-        
-        if path in graph and path in self.links:
-            raise Exception("Group", path, "already exists")
-        else:
+        if not path in self.links:
             graph[path] = []
-            graph[self.name].append(path)
+            #graph[self.name].append(path)
             vertices_no = vertices_no + 1
             
-            node = MemGroup(self, path)
-            link = MemLink(path, self, node)
+            group = MemGroup(self, path)
+            link = MemLink(self, group, path)
             self.links[path] = link
+            
+            return group
 
-            return node
+        else:
+            raise Exception("Group", path, "already exists")
+        
+    def get_group(self, path):
+        """
+        Return immediately attached groups to this group
+        """
+        if not self.has_group(path):
+            raise GroupNotFoundError("Group `%s` does not exist")
+        return self.links[path].target
+    
+    def has_group(self, path):
+        """
+        Return immediately attached groups to this group
+        """
+        return path in self.links
+    
+    def del_group(self, path):
+        """
+        Return immediately attached groups to this group
+        """
+        if not self.has_group(path):
+            raise GroupNotFoundError("Group `%s` does not exist")
+        log.debug('Removing Group `%s`', path)
+        del self.links[path]
+        
+    def visit(self, callable):
+        """
+        Recursively visit all objects in this group and subgroups
+        """
+        pass
+    
+    def visititems(self, callable):
+        """
+        Recursively visit all objects in this group and subgroups.
+        Like Group.visit(), except your callable should have the signature:
+        callable (name, object)
+        In this case object will be a Group ro Dataset instance
+        """
+        pass
+        
         
     def get_node(self, path): #TODO regex
         """
@@ -240,7 +245,71 @@ class MemGroup(BackendGroup):
         dfs(visited, graph, self.name)
         return visited
     
-    def get_object_info(self):
+
+
+    def create_dataset(
+        self,
+        name,
+        shape=None,
+        dtype=np.float32,
+        fillvalue=0,
+        data=None,
+        chunk_size=None,
+    ):
+
+        if not ((shape is not None and dtype is not None) or data is not None):
+            raise Exception("Provide `shape` and `dtype` or `data`")
+        if self.has_dataset(name):
+            raise Exception("Dataset `%s` already exists" % name)
+
+        if data is not None:
+            shape = data.shape
+            dtype = data.dtype
+
+        if chunk_size is None:
+            chunk_size = shape
+
+        chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size)).astype(int)
+
+        log.debug("Creating Dataset `%s`", name)
+        self.datasets[name] = None  # Key `name` has to exist
+        dataset = MemDataset(
+            self, name, shape, dtype, fillvalue, chunk_grid, chunk_size
+        )
+        self.datasets[name] = dataset
+        
+        link = MemLink(self, dataset, name)
+        self.links[name] = link
+        
+        return dataset
+
+    def get_dataset(self, name):
+        if not self.has_dataset(name):
+            raise DatasetNotFoundError("Dataset `%s` does not exist")
+        return self.datasets[name]
+
+    def has_dataset(self, name):
+        return name in self.datasets
+
+    def del_dataset(self, name):
+        if not self.has_dataset(name):
+            raise DatasetNotFoundError("Dataset `%s` does not exist")
+        log.debug("Removing Dataset `%s`", name)
+        del self.datasets[name]
+        
+    def create_metadata(self):
+        return self.metadata
+    
+    def get_metadata(self):
+        return self.metadata
+    
+    def has_metadata(self):
+        return self.metadata
+    
+    def del_metadata(self):
+        return self.metadata
+    
+    def get_object_info(self): # TODO: in the metadata?
         """
         Get information about the group
         """
@@ -250,174 +319,8 @@ class MemGroup(BackendGroup):
         object_info.update("Members", len(list(self.links.keys())))
         
         return object_info
-    
-    def get_link_info():
-        return self.links
-    
-    def get_info(self):
-        return self.metadata
-    
-    def link(self, n1, n2, e): # TODO: not sure if leaving it
-        global graph
-        if n1 not in graph:
-            raise Exception("Node", n1, "does not exist")
-        if n2 not in graph:
-            raise Exception("Node", n2, "does not exist")
-        else:
-            graph[n1].append(e)
-        return e
-    
-    def unlink(self, n1, n2, e): # TODO: not sure if leaving it
-        global graph
-        if n1 not in graph:
-            raise Exception("Node", n1, "does not exist")
-        if n2 not in graph:
-            raise Exception("Node", n2, "does not exist")
-        else:
-            graph[n1].remove(e)
-        return e
-
-    def create_dataset(
-        self,
-        name,
-        shape=None,
-        dtype=np.float32,
-        fillvalue=0,
-        data=None,
-        chunk_size=None,
-    ):
-
-        if not ((shape is not None and dtype is not None) or data is not None):
-            raise Exception("Provide `shape` and `dtype` or `data`")
-        if self.has_dataset(name):
-            raise Exception("Dataset `%s` already exists" % name)
-
-        if data is not None:
-            shape = data.shape
-            dtype = data.dtype
-
-        if chunk_size is None:
-            chunk_size = shape
-
-        chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size)).astype(int)
-
-        log.debug("Creating Dataset `%s`", name)
-        self.datasets[name] = None  # Key `name` has to exist
-        dataset = MemDataset(
-            self, name, shape, dtype, fillvalue, chunk_grid, chunk_size
-        )
-        self.datasets[name] = dataset
-        return dataset
-
-    def get_dataset(self, name):
-        if not self.has_dataset(name):
-            raise DatasetNotFoundError("Dataset `%s` does not exist")
-        return self.datasets[name]
-
-    def has_dataset(self, name):
-        return name in self.datasets
-
-    def del_dataset(self, name):
-        if not self.has_dataset(name):
-            raise DatasetNotFoundError("Dataset `%s` does not exist")
-        log.debug("Removing Dataset `%s`", name)
-        del self.datasets[name]
         
     
-        
-    
-        
-class MemTree(): # TODO: add the BackendTree
-    """
-    A Memory Tree represents a dictionary of dictionaries
-    """
-    
-    def __init__(self, connection_handler, name, *args, **kwargs):
-        # super(MemTree, self).__init__(*args, **kwargs)
-        self.connection_handler = connection_handler
-        self.name = name
-        self.metadata = {}
-        self.datasets = {}
-        self.trees = {}
-        self.graph = {}
-        self.graph[self.name] = []
-        
-    # Added methods
-    def create(self, location, path):
-        """
-        Creates a new empty group and gives it a name
-        :param location: identifier of the file/group in a file with respect to which the new group is to be identified
-        :param path: string that provides wither an absolute path or a relative path to the new group
-                     Begins with a slash: absolute path indicating that it locates the new group from the root group of the HDF5 file.
-                     No slash: relative path is a path from that file's root group.
-                               when the location is a group, a relative path is a path from that group.
-        """
-        if path.startswith("/"):
-            pass
-        else:
-            pass
-        tree = MemTree(self, path)
-        self.trees[path] = tree
-        return tree
-    
-    def create_tree(self, name):
-        self.trees[name] = {}
-        backendtree = MemTree(self, name)
-        self.trees[name][name] = backendtree
-        return backendtree
-    
-    def open(self, name):
-        """ Open an existing group"""
-        tree = self.trees.get(name, None)
-        return tree
-
-    def create_dataset(
-        self,
-        name,
-        shape=None,
-        dtype=np.float32,
-        fillvalue=0,
-        data=None,
-        chunk_size=None,
-    ):
-
-        if not ((shape is not None and dtype is not None) or data is not None):
-            raise Exception("Provide `shape` and `dtype` or `data`")
-        if self.has_dataset(name):
-            raise Exception("Dataset `%s` already exists" % name)
-
-        if data is not None:
-            shape = data.shape
-            dtype = data.dtype
-
-        if chunk_size is None:
-            chunk_size = shape
-
-        chunk_grid = (np.ceil(np.asarray(shape, float) / chunk_size)).astype(int)
-
-        log.debug("Creating Dataset `%s`", name)
-        self.datasets[name] = None  # Key `name` has to exist
-        dataset = MemDataset(
-            self, name, shape, dtype, fillvalue, chunk_grid, chunk_size
-        )
-        self.datasets[name] = dataset
-        return dataset
-
-    def get_dataset(self, name):
-        if not self.has_dataset(name):
-            raise DatasetNotFoundError("Dataset `%s` does not exist")
-        return self.datasets[name]
-
-    def has_dataset(self, name):
-        return name in self.datasets
-
-    def del_dataset(self, name):
-        if not self.has_dataset(name):
-            raise DatasetNotFoundError("Dataset `%s` does not exist")
-        log.debug("Removing Dataset `%s`", name)
-        del self.datasets[name]
-
-
 class MemDataset(BackendDataset):
 
     def __init__(self, pool, name, shape, dtype, fillvalue, chunk_grid,
