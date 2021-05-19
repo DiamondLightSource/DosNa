@@ -8,8 +8,9 @@ import numpy as np
 import h5py
 import json
 import dosna as dn
-import hdf5todict.hdf5todict as hd
-from hdf5todict.hdf5todict import LazyHdfDict #TODO: Create own methods?
+import dosna.tools.hdf5todict.hdf5todict as hd
+#import hdf5todict.hdf5todict as hd
+#from hdf5todict.hdf5todict import LazyHdfDict #TODO: Create own methods?
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendDataset, DatasetNotFoundError,
@@ -107,7 +108,7 @@ class Hdf5todosna():
 
 
 
-
+"""
 
 con = dn.Connection("dn-ssfadss")
 
@@ -143,3 +144,4 @@ h5file = y.jsondict_to_hdf5(jsondict, "testfile.h5")
 #print(hfile.keys())
 f = h5py.File('testfile.h5', "r")
 #print(f['bar'].keys())
+"""

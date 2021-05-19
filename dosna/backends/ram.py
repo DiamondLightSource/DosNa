@@ -153,13 +153,8 @@ class MemGroup(BackendGroup):
         Creates a new empty group.
         :param string that provides an absolute path or a relative path to the new group
         """
-        global graph
-        global vertices_no
         
         if not path in self.links:
-            graph[path] = []
-            #graph[self.name].append(path)
-            vertices_no = vertices_no + 1
             
             group = MemGroup(self, path)
             link = MemLink(self, group, path)
@@ -193,20 +188,37 @@ class MemGroup(BackendGroup):
         log.debug('Removing Group `%s`', path)
         del self.links[path]
         
-    def visit(self, callable):
+    def visit(self):
         """
         Recursively visit all objects in this group and subgroups
         """
-        pass
+        def _recurse(links):
+            groups = []
+            for key, value in links.items():
+                if hasattr(value.target, "links"):
+                    groups.append(key)
+                    groups += _recurse(value.target.links)
+            return groups
+        
+        return _recurse(self.links)
     
-    def visititems(self, callable):
+    def visititems(self):
         """
         Recursively visit all objects in this group and subgroups.
         Like Group.visit(), except your callable should have the signature:
         callable (name, object)
         In this case object will be a Group ro Dataset instance
         """
-        pass
+        
+        def _recurse(links):
+            objects = []
+            for key, value in links.items():
+                objects.append(key)
+                if hasattr(value.target, "links"):
+                    objects += _recurse(value.target.links)
+            return objects
+        
+        return _recurse(self.links)
         
         
     def get_node(self, path): #TODO regex

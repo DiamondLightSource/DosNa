@@ -30,11 +30,12 @@ print(Bazz.get("Bafffff/Bak")) #None
 cn = dn.Connection("dn-ram")
 cn.connect()
 A = cn.create_group("/")
-Bazz = A.create_group("Bazz")
-Batt = Bazz.create_group("Batt")
+Bar = A.create_group("Bar")
+Bas = A.create_group("Bas")
+Baz = A.create_group("Baz")
+Car = Baz.create_group("Car")
 Dset = A.create_dataset("Dset1", shape=(2,2))
 
-print(A.keys())
-print(A.values())
-print(A.items())
+print(Baz.visit())
+print(Baz.visititems())
 
