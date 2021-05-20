@@ -18,8 +18,16 @@ Battt = Bazz.create_group("Battt")
 Bappp = Bazz.create_group("Bapppp")
 Bafffff = Bazz.create_group("Bafffff")
 Bak = Bafffff.create_group("Bak")
-
-print(Bazz.get("Bafffff/Bak")) #None
+dset1 = Bak.create_dataset("dset1", shape=(2,2))
+#Bak.attrs['shape'] = (2,3)
+#Bak.attrs['comoquiersas'] = (34,3)
+print(Bak.attrs)
+"""
+print(Bak.attrs.keys())
+print(Bak.attrs['shape'])
+print(dset1.attrs.keys())
+"""
+#print(Bazz.get("Bafffff/Bak")) #None
 
 
 
@@ -29,13 +37,23 @@ print(Bazz.get("Bafffff/Bak")) #None
 
 cn = dn.Connection("dn-ram")
 cn.connect()
-A = cn.create_group("/")
-Bar = A.create_group("Bar")
-Bas = A.create_group("Bas")
-Baz = A.create_group("Baz")
-Car = Baz.create_group("Car")
-Dset = A.create_dataset("Dset1", shape=(2,2))
+print(cn.root_group)
+print(cn.create_group("path"))
+#A = cn.create_group("/")
+#Bar = A.create_group("Bar")
+#Bas = A.create_group("Bas")
+#Baz = A.create_group("Baz")
+#Car = Baz.create_group("Car")
+#Dset = A.create_dataset("Dset1", shape=(2,2))
 
-print(Baz.visit())
-print(Baz.visititems())
+#print(A.visit())
+#print(A.visititems())
+#s = A.get_group("Baz/Car")
+#t = A.has_group("Baz/Car")
+#t = A.del_group("Baz")
+#t = A.has_group("Baz")
+#print(t.links)
+#A.del_group("Baz/Car")
+#A.get_group("Baz/Car")
+
 

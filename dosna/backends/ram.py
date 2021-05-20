@@ -24,6 +24,7 @@ class MemConnection(BackendConnection):
     """
     def __init__(self, *args, **kwargs):
         super(MemConnection, self).__init__(*args, **kwargs)
+        self.root_group = MemGroup(self, "/")
         self.datasets = {}
         self.links = {}
         
@@ -40,7 +41,7 @@ class MemConnection(BackendConnection):
             return group
         else:
             raise Exception("Group", path, "already exists")
-            
+        
     
     def get_group(self, path):
         """
@@ -112,14 +113,13 @@ class MemLink():
         
 class MemGroup(BackendGroup):
     
-    def __init__(self, name, *args, **kwargs):
-        
+    def __init__(self, parent, name, attrs=None, *args, **kwargs):
         super(MemGroup, self).__init__(name)
-        #self.name = name
+        # TODO : do they have name?
         #self.parent = parent
-        # self.connection = file
+        #self.connection = file
         self.links = {}
-        self.attrs = {}
+        self.attrs = attrs
         self.datasets = {}
     
     def keys(self):
@@ -155,7 +155,6 @@ class MemGroup(BackendGroup):
         """
         
         if not path in self.links:
-            
             group = MemGroup(self, path)
             link = MemLink(self, group, path)
             self.links[path] = link
@@ -167,26 +166,73 @@ class MemGroup(BackendGroup):
         
     def get_group(self, path):
         """
+        Retrieve an item, or information about an item. work like the standard Python
+        dict.get
+        """
+        def _recurse(arr, links):
+            if arr[0] in links:
+                link_target = links.get(arr[0]).target
+                if len(arr) > 1:
+                    arr.pop(0)
+                    return _recurse(arr, link_target.links)
+                else:
+                    return link_target
+        
+        #if path in self.links:
+        #    return self.links[path]
+        #elif "/" in path:
+        arr = path.split("/") # TODO: more validation here
+        group = _recurse(arr, self.links)
+        
+        if group is None:
+            raise GroupNotFoundError("Group `%s` does not exist")
+        return group
+    
+    def has_group(self, path): # TODO duplicates?
+        """
+        Return immediately attached groups to this group
+        """
+        def _recurse(arr, links):
+            if arr[0] in links:
+                link_target = links.get(arr[0]).target
+                if len(arr) > 1:
+                    arr.pop(0)
+                    return _recurse(arr, link_target.links)
+                else:
+                    return link_target
+        
+        arr = path.split("/") # TODO: more validation here
+        group = _recurse(arr, self.links)
+        
+        if group is None:
+            raise GroupNotFoundError("Group `%s` does not exist")
+        return True
+        
+    
+    def del_group(self, path): # TODO
+        """
         Return immediately attached groups to this group
         """
         if not self.has_group(path):
             raise GroupNotFoundError("Group `%s` does not exist")
-        return self.links[path].target
-    
-    def has_group(self, path):
-        """
-        Return immediately attached groups to this group
-        """
-        return path in self.links
-    
-    def del_group(self, path):
-        """
-        Return immediately attached groups to this group
-        """
-        if not self.has_group(path):
-            raise GroupNotFoundError("Group `%s` does not exist")
-        log.debug('Removing Group `%s`', path)
-        del self.links[path]
+
+        # TODO remove group or link, or both?
+        def _recurse(arr, links):
+            if arr[0] in links:
+                #link = links.get(arr[0])
+                link_target = links.get(arr[0]).target
+                log.debug('Removing Group `%s`', path)
+                if len(arr) > 1:
+                    arr.pop(0)
+                    return _recurse(arr, link_target.links)
+                else:
+                    #TODO can't remove group from any dictionary
+                    #TODO remove this link but what about other linnks to this?
+                    #TODO return the group or just delete it?
+                    del links[arr[0]]
+        
+        arr = path.split("/") # TODO: more validation here
+        _recurse(arr, self.links)
         
     def visit(self):
         """
@@ -220,44 +266,6 @@ class MemGroup(BackendGroup):
         
         return _recurse(self.links)
         
-        
-    def get_node(self, path): #TODO regex
-        """
-        Retrieve an item, or information about an item. work like the standard Python
-        dict.get
-        """
-        if path in self.links:
-            return self.links[path]
-        elif "/" in path:
-            arr = path.split("/")
-            """
-                    
-            if arr[0] in self.links:
-                first_link = self.links.get(arr[0])
-                if arr[1] in first_link.target.links:
-                    second_link = first_link.target.links.get(arr[1])
-                    if arr[2] in second_link.target.links:
-                        third_link = second_link.target.links.get(arr[2])
-                        return third_link.target
-            """
-        
-    def iterate(self): # TODO: allow for cycles
-        """
-        Recursively visits all the objects.
-        Structure is traversed as a graph, starting at one node
-        and recursively visiting linked nodes. 
-        """
-        global graph
-        visited = [] 
-        def dfs(visited, graph, node):
-            if node not in visited:
-                visited.append(node)
-                for neighbour in graph[node]:
-                    dfs(visited, graph, neighbour)
-        dfs(visited, graph, self.name)
-        return visited
-    
-
 
     def create_dataset(
         self,
@@ -286,7 +294,7 @@ class MemGroup(BackendGroup):
         log.debug("Creating Dataset `%s`", name)
         self.datasets[name] = None  # Key `name` has to exist
         dataset = MemDataset(
-            self, name, shape, dtype, fillvalue, chunk_grid, chunk_size
+            self, name, shape, dtype, fillvalue, chunk_grid, chunk_size,
         )
         self.datasets[name] = dataset
         

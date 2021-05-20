@@ -10,7 +10,7 @@ import json
 import dosna as dn
 import dosna.tools.hdf5todict.hdf5todict as hd
 #import hdf5todict.hdf5todict as hd
-#from hdf5todict.hdf5todict import LazyHdfDict #TODO: Create own methods?
+from dosna.tools.hdf5todict.hdf5todict import LazyHdfDict #TODO: Create own methods?
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendDataset, DatasetNotFoundError,
@@ -41,10 +41,14 @@ class Hdf5todosna():
             for key, value in hdf5dict.items():
                 if isinstance(value, LazyHdfDict):
                     dosnadict[key] = {}
-                    dosnadict[key][key] = dosnaobject.create_group(key)
+                    #dosnadict[key][key] = dosnaobject.create_group(key) # TODO only deleting this line is the only thing you need
+                    g = dosnaobject.create_group(key)
+                    print(g, g.name)
                     dosnadict[key] = _recurse(value, dosnadict[key])
                 elif isinstance(value, h5py._hl.dataset.Dataset):
                     if value.nbytes > 10: # TODO: file size
+                        # TODO: we need the attributes of the dataset and the group?
+                        # TODO: missing some additional metadata of the dataset
                         dataset = dosnaobject.create_dataset(
                             key,
                             shape=value.shape,
@@ -108,12 +112,9 @@ class Hdf5todosna():
 
 
 
+
 """
-
 con = dn.Connection("dn-ssfadss")
-
-
-
 
 # TESTING
 x = Hdf5todosna('testfile.h5')
@@ -144,4 +145,39 @@ h5file = y.jsondict_to_hdf5(jsondict, "testfile.h5")
 #print(hfile.keys())
 f = h5py.File('testfile.h5', "r")
 #print(f['bar'].keys())
+
+import hdf5todosna
+
+with h5py.File("testlinks.h5", "w") as f:
+    B = f.create_group("B")
+    dset1 = B.create_dataset("dset1", shape=(2,2))
+    B.attrs['one_attribute'] = "Aqui hay un atributo"
+    B.attrs['second_attribute'] = [2,3,4]
+    B.attrs['third'] = "Aqui hay un atributo"
+    dset1.attrs['shape'] = (34,3)
+    dset1.attrs['dtype'] = "int"
+    dset1.attrs['chunk_grid'] = np.asarray((2,2), dtype=int)
+    dset1.attrs['chunk_size'] = np.asarray((4,4), dtype=int)
+    #<Attributes of HDF5 object at 140573747160704>
+
+
 """
+with h5py.File("try.h5", "w") as f:
+    A = f.create_group("A")
+    B = A.create_group("B")
+    C = A.create_group("C")
+    D = B.create_group("D")
+    dset1 = B.create_dataset("dset1", shape=(2,2))
+    
+x = Hdf5todosna('try.h5')
+con = dn.Connection("dn-csn")
+hdf5dict = x.hdf5_to_dict()
+#print(hdf5dict["B"]["dset1"].attrs['shape'])
+dosnadict = x.hdf5dict_to_dosna(hdf5dict, con)
+print(dosnadict)
+#jsondict = x.hdf5dict_to_jsondict(hdf5dict)
+#jsonfile = x.jsondict_to_jsonfile(jsondict, 'testlinks.json')
+#jsondict = x.jsonfile_to_jsondict(jsonfile)
+#dosnadict = x.jsondict_to_dosna(jsondict, con)
+#print("===============")
+#print(dosnadict)
