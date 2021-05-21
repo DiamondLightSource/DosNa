@@ -1,3 +1,43 @@
+
+"""
+RECURSING HDF5DICT AND STORING GROUPS IN THE DOSNADICTIONARY
+"""
+        def _recurse(hdf5dict, dosnadict):
+            # TODO: mirar la class del dictionary
+            for key, value in hdf5dict.items():
+                if isinstance(value, LazyHdfDict):
+                    dosnadict[key] = {}
+                    #dosnadict[key][key] = dosnaobject.create_group(key) # TODO only deleting this line is the only thing you need
+                    g = dosnaobject.create_group(key)
+                    print(g, g.name)
+                    dosnadict[key] = _recurse(value, dosnadict[key])
+                elif isinstance(value, h5py._hl.dataset.Dataset):
+                    if value.nbytes > 10: # TODO: file size
+                        # TODO: we need the attributes of the dataset and the group?
+                        # TODO: missing some additional metadata of the dataset
+                        dataset = dosnaobject.create_dataset(
+                            key,
+                            shape=value.shape,
+                            dtype=value.dtype,
+                            chunk_size=value.chunks,
+                        )
+                        if value.chunks is not None:
+                            for s in value.iter_chunks():
+                                dataset[s] = value[s]
+                            # TODO: too big data and not chunked?
+                        dosnadict[key] = dataset
+                    else:
+                        arr = np.zeros(value.shape)
+                        value.read_direct(arr)
+                        
+            return dosnadict
+        
+        return _recurse(hdf5dict, {})
+
+
+"""
+PATH TO DICT
+"""
 def path_to_dict(path_name, datadict):
     r = re.compile("(.*/)")  # this checks for anything and only two backlash
     if r.match(path_name) is not None:
@@ -13,11 +53,12 @@ def path_to_dict(path_name, datadict):
     return datadict
 
 
-geog = {"Spain": {"City": {"Madrid": {"Barrio"}}}}
-path_name = "Spain/City/Madrid"
-dict_path = path_to_dict(path_name, geog)
+#geog = {"Spain": {"City": {"Madrid": {"Barrio"}}}}
+#path_name = "Spain/City/Madrid"
+#dict_path = path_to_dict(path_name, geog)
 
 """
+DOSNA DATASET CHUNKS TEST
 
 con = dn.Connection("dosna-test")
 con.connect()
@@ -28,11 +69,14 @@ for i in ds_slices:
     chunk = ds.get_chunk(i)
     data = chunk.get_data()  # slices dentro del chunk get the initial position
     chunk.set_data(np_data)
+"""
 
+
+"""
+CREATING TREE FROM HDF5DICT
 
 fname = "testfile1.h5"
 res_lazy = hd.load(fname, lazy=True)
-print(res_lazy)
 
     def create_tree(self, name, connection_handler):
         log.debug("Creating Tree `%s`", name)
@@ -54,38 +98,8 @@ print(res_lazy)
         return tree
 """
 
-cn = dn.Connection("dn-ram")
-A = cn.create_node("location", "/")
-B = A.create_node("B")
-Ba = A.create_node("Ba")
-Bar = A.create_node("Bar")
-Bazz = A.create_node("Bazz")
-Battt = Bazz.create_node("Battt")
-Bappp = Bazz.create_node("Bapppp")
-Bafffff = Bazz.create_node("Bafffff")
-Dataset1 = Battt.create_node("Dataset1")
-#print(A.iterate())
-print(Bazz.iterate())
-#print(A.get_node(""))
-#print(Bazz.links.keys())
-#print(A.iterate())
-#A.visit()
-#A.get_object_info()
-print(A.get_node("Bazz/Battt/Dataset1"))
-#print(Bazz.__contains__("Battfssft"))
-#print(Bazz.keys())
-#print(Bazz.values())
-#print(Bazz.items())
-#C = A.create_node("location", "C")
-#D = B.create_node("location", "D")
-#A.unlink("A", "C", "t")
-#v = A.iterate()
-#print(v)
-
-#Ideal result
-#<HDF5 group "/Bazz" (3 members)>
-
-# Connection
+"""
+TREE METHODS
 
     def create_tree(self, name):
         self.trees[name] = {}
@@ -110,9 +124,7 @@ print(A.get_node("Bazz/Battt/Dataset1"))
 
 
 class MemTree(): # TODO: add the BackendTree
-    """
-    A Memory Tree represents a dictionary of dictionaries
-    """
+
     
     def __init__(self, connection_handler, name, *args, **kwargs):
         # super(MemTree, self).__init__(*args, **kwargs)
@@ -126,14 +138,14 @@ class MemTree(): # TODO: add the BackendTree
         
     # Added methods
     def create(self, location, path):
-        """
+
         Creates a new empty group and gives it a name
         :param location: identifier of the file/group in a file with respect to which the new group is to be identified
         :param path: string that provides wither an absolute path or a relative path to the new group
                      Begins with a slash: absolute path indicating that it locates the new group from the root group of the HDF5 file.
                      No slash: relative path is a path from that file's root group.
                                when the location is a group, a relative path is a path from that group.
-        """
+
         if path.startswith("/"):
             pass
         else:
@@ -149,7 +161,6 @@ class MemTree(): # TODO: add the BackendTree
         return backendtree
     
     def open(self, name):
-        """ Open an existing group"""
         tree = self.trees.get(name, None)
         return tree
 
@@ -210,37 +221,6 @@ class MemTree(): # TODO: add the BackendTree
             temp = [n2, e] # TODO: what is this?
             graph[n1].append(e) #TODO: append e or the n2?
         return e
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -29,42 +29,16 @@ class MemConnection(BackendConnection):
         self.links = {}
         
     def create_group(self, path):
-        """
-        Creates a new empty group.
-        :param string that provides an absolute path or a relative path to the new group
-        """
-        if not path in self.links:
-            group = MemGroup(self, path)
-            link = MemLink(self, group, path)
-            self.links[path] = link
-            
-            return group
-        else:
-            raise Exception("Group", path, "already exists")
+        self.root_group.create_group(path)
         
-    
     def get_group(self, path):
-        """
-        Return immediately attached groups to this group
-        """
-        if not self.has_group(path):
-            raise GroupNotFoundError("Group `%s` does not exist")
-        return self.links[path].target
+        self.root_group.get_group(path)
     
     def has_group(self, path):
-        """
-        Return immediately attached groups to this group
-        """
-        return path in self.links
-    
+        self.root_group.has_group(path)
+        
     def del_group(self, path):
-        """
-        Return immediately attached groups to this group
-        """
-        if not self.has_group(path):
-            raise GroupNotFoundError("Group `%s` does not exist")
-        log.debug('Removing Group `%s`', path)
-        del self.links[path].name
+        self.root_group.del_group(path)
     
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
@@ -120,7 +94,7 @@ class MemGroup(BackendGroup):
         #self.connection = file
         self.links = {}
         self.attrs = attrs
-        self.datasets = {}
+        self.datasets = {} # TODO does it hold datasets?
     
     def keys(self):
         """
@@ -164,7 +138,7 @@ class MemGroup(BackendGroup):
         else:
             raise Exception("Group", path, "already exists")
         
-    def get_group(self, path):
+    def get_group(self, path): # TODO does it look for datasets too?
         """
         Retrieve an item, or information about an item. work like the standard Python
         dict.get

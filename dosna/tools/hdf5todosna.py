@@ -34,21 +34,16 @@ class Hdf5todosna():
         hdf5dict = hd.load(self._h5file, lazy=True)
         return hdf5dict
     
-    def hdf5dict_to_dosna(self, hdf5dict, dosnaobject):
+    def hdf5dict_to_dosna(self, hdf5dict, dosnaobject): # TODO: do I need the dosnadict at all?
         
-        def _recurse(hdf5dict, dosnadict):
-            # TODO: mirar la class del dictionary
+        def _recurse(hdf5dict, dosnadict, group):
             for key, value in hdf5dict.items():
                 if isinstance(value, LazyHdfDict):
                     dosnadict[key] = {}
-                    #dosnadict[key][key] = dosnaobject.create_group(key) # TODO only deleting this line is the only thing you need
-                    g = dosnaobject.create_group(key)
-                    print(g, g.name)
-                    dosnadict[key] = _recurse(value, dosnadict[key])
+                    group = group.create_group(key)
+                    dosnadict[key] = _recurse(value, dosnadict[key], group)
                 elif isinstance(value, h5py._hl.dataset.Dataset):
-                    if value.nbytes > 10: # TODO: file size
-                        # TODO: we need the attributes of the dataset and the group?
-                        # TODO: missing some additional metadata of the dataset
+                    if value.nbytes > 10: # TODO: nbytes number
                         dataset = dosnaobject.create_dataset(
                             key,
                             shape=value.shape,
@@ -58,16 +53,16 @@ class Hdf5todosna():
                         if value.chunks is not None:
                             for s in value.iter_chunks():
                                 dataset[s] = value[s]
-                            # TODO: too big data and not chunked?
                         dosnadict[key] = dataset
                     else:
+                        # TODO where does this go?
                         arr = np.zeros(value.shape)
                         value.read_direct(arr)
                         
             return dosnadict
         
-        return _recurse(hdf5dict, {})
-        
+        return _recurse(hdf5dict, {}, dosnaobject)
+
 
     def hdf5dict_to_jsondict(self, hdf5dict):
         
