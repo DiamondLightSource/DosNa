@@ -29,13 +29,16 @@ class MemConnection(BackendConnection):
         self.links = {}
         
     def create_group(self, path):
-        self.root_group.create_group(path)
+        if path != "/":
+            return self.root_group.create_group(path)
+        else:
+            raise Exception("Group", path, "already exists")
         
     def get_group(self, path):
-        self.root_group.get_group(path)
+        return self.root_group.get_group(path)
     
     def has_group(self, path):
-        self.root_group.has_group(path)
+        return self.root_group.has_group(path)
         
     def del_group(self, path):
         self.root_group.del_group(path)
@@ -88,13 +91,51 @@ class MemLink():
 class MemGroup(BackendGroup):
     
     def __init__(self, parent, name, attrs=None, *args, **kwargs):
-        super(MemGroup, self).__init__(name)
-        # TODO : do they have name?
-        #self.parent = parent
-        #self.connection = file
+        super(MemGroup, self).__init__(name)  # TODO : do they have name?
+        # TODO cuantas de estas cosas van a base?
+        self.parent = parent
         self.links = {}
         self.attrs = attrs
         self.datasets = {} # TODO does it hold datasets?
+        self.connection = self.get_connection()
+        self.absolute_path = self.get_absolute_path()
+        
+    def get_absolute_path(self):
+        
+        def find_path(parent):
+            full_path = []
+            #print(self.name, parent.name)
+            if parent.name == "/":
+                return full_path
+            else:
+                full_path.append(parent.name)
+                p = parent.parent
+                full_path += find_path(p)
+            return full_path
+        
+        if self.name == "/":
+            return self.name
+        else:
+
+            lista = find_path(self.parent)
+            lista.reverse()
+            lista.append(self.name)
+            s = "/" + '/'.join(lista)
+            return s
+    
+    def get_connection(self):
+        
+        def find_connection(parent):
+            if parent.name == "/":
+                return parent.parent.name
+            else:
+                p = parent.parent
+                return find_connection(p)
+            
+        if self.name == "/":
+            return "Root group"
+        else:
+            return find_connection(self.parent)
     
     def keys(self):
         """
@@ -127,7 +168,8 @@ class MemGroup(BackendGroup):
         Creates a new empty group.
         :param string that provides an absolute path or a relative path to the new group
         """
-        
+        if not path.isalnum():
+            raise Exception("String ", path, "is not alphanumeric")
         if not path in self.links:
             group = MemGroup(self, path)
             link = MemLink(self, group, path)
