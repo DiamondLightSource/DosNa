@@ -2,19 +2,14 @@
 """
 RECURSING HDF5DICT AND STORING GROUPS IN THE DOSNADICTIONARY
 """
-        def _recurse(hdf5dict, dosnadict):
-            # TODO: mirar la class del dictionary
             for key, value in hdf5dict.items():
                 if isinstance(value, LazyHdfDict):
                     dosnadict[key] = {}
-                    #dosnadict[key][key] = dosnaobject.create_group(key) # TODO only deleting this line is the only thing you need
                     g = dosnaobject.create_group(key)
                     print(g, g.name)
                     dosnadict[key] = _recurse(value, dosnadict[key])
                 elif isinstance(value, h5py._hl.dataset.Dataset):
-                    if value.nbytes > 10: # TODO: file size
-                        # TODO: we need the attributes of the dataset and the group?
-                        # TODO: missing some additional metadata of the dataset
+                    if value.nbytes > 10:
                         dataset = dosnaobject.create_dataset(
                             key,
                             shape=value.shape,
@@ -24,7 +19,7 @@ RECURSING HDF5DICT AND STORING GROUPS IN THE DOSNADICTIONARY
                         if value.chunks is not None:
                             for s in value.iter_chunks():
                                 dataset[s] = value[s]
-                            # TODO: too big data and not chunked?
+ 
                         dosnadict[key] = dataset
                     else:
                         arr = np.zeros(value.shape)
@@ -117,13 +112,13 @@ TREE METHODS
 
     def del_tree(self, name):
         if not self.has_dataset(name):
-            print("BackendTree not found") # TODO: Implement class
+            print("BackendTree not found") 
         log.debug("Removing Backend `%s`", name)
         del self.trees[name]
 
 
 
-class MemTree(): # TODO: add the BackendTree
+class MemTree(): 
 
     
     def __init__(self, connection_handler, name, *args, **kwargs):
@@ -218,8 +213,8 @@ class MemTree(): # TODO: add the BackendTree
         if n2 not in graph:
             raise Exception("Node", n2, "does not exist")
         else:
-            temp = [n2, e] # TODO: what is this?
-            graph[n1].append(e) #TODO: append e or the n2?
+            temp = [n2, e] 
+            graph[n1].append(e) 
         return e
 
 

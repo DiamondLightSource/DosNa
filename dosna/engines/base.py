@@ -32,6 +32,10 @@ class BackendWrapper(object):
 
 
 class EngineConnection(BackendWrapper):
+    
+    def create_group(self, name):
+        group = self.instance.create_group(name)
+        return group
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
@@ -42,6 +46,38 @@ class EngineConnection(BackendWrapper):
             dataset.load(data)
         return dataset
 
+    def get_dataset(self, name):
+        # this is meant to wrap the dataset with the specific engine class
+        raise NotImplementedError('`get_dataset` not implemented '
+                                  'for this engine')
+
+    def del_dataset(self, name):
+        dataset = self.get_dataset(name)
+        dataset.clear()
+        self.instance.del_dataset(name)
+
+    def __getitem__(self, dataset_name):
+        return self.get_dataset(dataset_name)
+    
+class EngineGroup(BackendWrapper):
+    
+    def create_group(self, name):
+        self.instance.create_group(name)
+        group = self.get_group(name)
+        return group
+        
+    def get_group(self, name):
+        raise NotImplemented('get_group not implemented for this engine')
+
+    def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
+                       data=None, chunk_size=None):
+        self.instance.create_dataset(name, shape, dtype, fillvalue,
+                                     data, chunk_size)
+        dataset = self.get_dataset(name)
+        if data is not None:
+            dataset.load(data)
+        return dataset
+    
     def get_dataset(self, name):
         # this is meant to wrap the dataset with the specific engine class
         raise NotImplementedError('`get_dataset` not implemented '

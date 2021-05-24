@@ -32,7 +32,7 @@ Bas = A.create_group("Bas")
 Baz = A.create_group("Baz")
 Car = Baz.create_group("Car")
 Kar = Car.create_group("Kar")
-Dset = A.create_dataset("Dse54/./.54t1", shape=(2,2))
+Dset = A.create_dataset("Dset1", shape=(2,2))
 
 
 #print(A.keys())

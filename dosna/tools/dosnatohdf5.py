@@ -58,7 +58,6 @@ class Dosnatohdf5():
         
         def _recurse(dosnadict, jsondict):
             for key, value in dosnadict.items():
-                #jsondict[key] = {} #TODO: mira esto?
                 if isinstance(value, dict):
                     jsondict[key] = {}
                     jsondict[key] = _recurse(value, jsondict[key])

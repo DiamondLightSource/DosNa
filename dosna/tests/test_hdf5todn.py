@@ -32,7 +32,6 @@ class Hdf5todosnaTest(unittest.TestCase):
     """
     
     connection_handle = None
-    # TODO: what is in the setUpClass and what is in the setUp?
     
     @classmethod
     def setUpClass(cls):
@@ -62,14 +61,12 @@ class Hdf5todosnaTest(unittest.TestCase):
         with h5py.File(H5FILE_NAME, "a") as f:
             del f[self.fake_dataset]
 
-    # TODO: maybe not needed
     def test_existing_dataset(self):
         with h5py.File(H5FILE_NAME, "r") as f:
             dataset = f[self.fake_dataset]
             self.assertIsInstance(dataset, h5py._hl.dataset.Dataset)
             
     def test_number_chunks(self):
-        # TODO: is not chunk grid
         self.assertSequenceEqual(list(self.dataset.chunks), [32, 32, 32])
     
     def test_hdf5dataset_equals_hdf5dictdataset(self):

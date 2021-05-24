@@ -91,51 +91,46 @@ class MemLink():
 class MemGroup(BackendGroup):
     
     def __init__(self, parent, name, attrs=None, *args, **kwargs):
-        super(MemGroup, self).__init__(name)  # TODO : do they have name?
-        # TODO cuantas de estas cosas van a base?
+        super(MemGroup, self).__init__(name)
         self.parent = parent
         self.links = {}
         self.attrs = attrs
-        self.datasets = {} # TODO does it hold datasets?
+        self.datasets = {} # TODO
         self.connection = self.get_connection()
         self.absolute_path = self.get_absolute_path()
         
-    def get_absolute_path(self):
-        
-        def find_path(parent):
-            full_path = []
-            #print(self.name, parent.name)
-            if parent.name == "/":
-                return full_path
-            else:
-                full_path.append(parent.name)
-                p = parent.parent
-                full_path += find_path(p)
-            return full_path
-        
-        if self.name == "/":
-            return self.name
-        else:
-
-            lista = find_path(self.parent)
-            lista.reverse()
-            lista.append(self.name)
-            s = "/" + '/'.join(lista)
-            return s
-    
     def get_connection(self):
         
         def find_connection(parent):
             if parent.name == "/":
                 return parent.parent.name
             else:
-                p = parent.parent
-                return find_connection(p)
+                return find_connection(parent.parent)
             
         if self.name == "/":
-            return "Root group"
+            return self.parent.name
         else:
             return find_connection(self.parent)
+        
+    def get_absolute_path(self):
+        
+        def find_path(parent):
+            full_path = []
+            if parent.name == "/":
+                return full_path
+            else:
+                full_path.append(parent.name)
+                full_path += find_path(parent.parent)
+            return full_path
+        
+        if self.name == "/":
+            return self.name
+        else:
+            full_path_list = find_path(self.parent)
+            full_path_list.reverse()
+            full_path_list.append(self.name)
+            full_path = "/" + '/'.join(full_path_list)
+            return full_path
     
     def keys(self):
         """
@@ -150,8 +145,7 @@ class MemGroup(BackendGroup):
         objects = []
         for value in self.links.values():
             objects.append(value.target)
-        #ValuesViewHDF5(<HDF5 group "/Bazz" (3 members)>)
-        return objects # TODO: is this the actual object? this seems the same
+        return objects
     
     def items(self):
         """
@@ -161,7 +155,7 @@ class MemGroup(BackendGroup):
         items = {}
         for value in self.links.values():
             items[value.name] = value.target
-        return items # TODO: implement this
+        return items
     
     def create_group(self, path):
         """
@@ -180,7 +174,7 @@ class MemGroup(BackendGroup):
         else:
             raise Exception("Group", path, "already exists")
         
-    def get_group(self, path): # TODO does it look for datasets too?
+    def get_group(self, path):
         """
         Retrieve an item, or information about an item. work like the standard Python
         dict.get
@@ -194,17 +188,14 @@ class MemGroup(BackendGroup):
                 else:
                     return link_target
         
-        #if path in self.links:
-        #    return self.links[path]
-        #elif "/" in path:
-        arr = path.split("/") # TODO: more validation here
-        group = _recurse(arr, self.links)
+        path_elements = path.split("/")
+        group = _recurse(path_elements, self.links)
         
         if group is None:
-            raise GroupNotFoundError("Group `%s` does not exist")
+            raise GroupNotFoundError("Group ", path, "does not exist")
         return group
     
-    def has_group(self, path): # TODO duplicates?
+    def has_group(self, path):
         """
         Return immediately attached groups to this group
         """
@@ -217,7 +208,7 @@ class MemGroup(BackendGroup):
                 else:
                     return link_target
         
-        arr = path.split("/") # TODO: more validation here
+        arr = path.split("/")
         group = _recurse(arr, self.links)
         
         if group is None:
@@ -225,7 +216,7 @@ class MemGroup(BackendGroup):
         return True
         
     
-    def del_group(self, path): # TODO
+    def del_group(self, path):
         """
         Return immediately attached groups to this group
         """
@@ -242,12 +233,9 @@ class MemGroup(BackendGroup):
                     arr.pop(0)
                     return _recurse(arr, link_target.links)
                 else:
-                    #TODO can't remove group from any dictionary
-                    #TODO remove this link but what about other linnks to this?
-                    #TODO return the group or just delete it?
                     del links[arr[0]]
         
-        arr = path.split("/") # TODO: more validation here
+        arr = path.split("/")
         _recurse(arr, self.links)
         
     def visit(self):
@@ -316,7 +304,6 @@ class MemGroup(BackendGroup):
         
         link = MemLink(self, dataset, name)
         self.links[name] = link
-        
         return dataset
 
     def get_dataset(self, name):
@@ -345,7 +332,7 @@ class MemGroup(BackendGroup):
     def del_metadata(self):
         return self.metadata
     
-    def get_object_info(self): # TODO: in the metadata?
+    def get_object_info(self):
         """
         Get information about the group
         """

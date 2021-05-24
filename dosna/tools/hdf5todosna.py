@@ -9,14 +9,14 @@ import h5py
 import json
 import dosna as dn
 import dosna.tools.hdf5todict.hdf5todict as hd
-#import hdf5todict.hdf5todict as hd
 from dosna.tools.hdf5todict.hdf5todict import LazyHdfDict #TODO: Create own methods?
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendDataset, DatasetNotFoundError,
                                  BackendGroup, GroupNotFoundError)
+from h5py._hl.dataset import Dataset
 
-# TODO: do I have to inherit from Object or create a superclass?
+MAX_NUM_BYTES = 20
 
 class Hdf5todosna():
     """
@@ -27,10 +27,6 @@ class Hdf5todosna():
         self._h5file = h5file
 
     def hdf5_to_dict(self):
-        # TODO: here is the hdf5file or in the init method?
-        # TODO: AttributeError: 'NoneType' object has no attribute 'items'
-        # TODO: Why not unite these two methods into one?
-        # TODO: check file is a h5file
         hdf5dict = hd.load(self._h5file, lazy=True)
         return hdf5dict
     
@@ -41,9 +37,22 @@ class Hdf5todosna():
                 if isinstance(value, LazyHdfDict):
                     dosnadict[key] = {}
                     group = group.create_group(key)
+                    for k, v in value.items():
+                        if isinstance(v, Dataset):
+                            ds = group.create_dataset(
+                            k,
+                            shape=v.shape,
+                            dtype=v.dtype,
+                            chunk_size=v.chunks,
+                        )
+                            print(group, group.name)
+                            print(ds)
+                            dosnadict[key][k] = ds   
+                            print(dosnadict[key][k])
                     dosnadict[key] = _recurse(value, dosnadict[key], group)
-                elif isinstance(value, h5py._hl.dataset.Dataset):
-                    if value.nbytes > 10: # TODO: nbytes number
+                elif isinstance(value, Dataset):
+                    if value.nbytes > 5: # TODO: nbytes number
+                        # TODO change duplicado
                         dataset = dosnaobject.create_dataset(
                             key,
                             shape=value.shape,
@@ -53,94 +62,73 @@ class Hdf5todosna():
                         if value.chunks is not None:
                             for s in value.iter_chunks():
                                 dataset[s] = value[s]
-                        dosnadict[key] = dataset
                     else:
                         # TODO where does this go?
                         arr = np.zeros(value.shape)
                         value.read_direct(arr)
                         
             return dosnadict
-        
-        return _recurse(hdf5dict, {}, dosnaobject)
+        dosnadict = _recurse(hdf5dict, {}, dosnaobject)
+        return dosnadict 
 
 
-    def hdf5dict_to_jsondict(self, hdf5dict):
+    def hdf5dict_to_json(self, hdf5dict, jsonfile): #TODO specify which type of json you are returning
         
         def _recurse(hdf5dict, jsondict):
             for key, value in hdf5dict.items():
-                jsondict[key] = {} # TODO: aqui?
                 if isinstance(value, LazyHdfDict):
+                    jsondict[key] = {}
                     jsondict[key] = _recurse(value, jsondict[key])
-                elif isinstance(value, h5py.Dataset):
-                    # TODO: metadata jsondict[key]["name"] = value.name
-                    jsondict[key] = value.name
+                elif isinstance(value, Dataset):
+                    if not "datasets" in jsondict:
+                        jsondict["datasets"] = {}
+                    jsondict["datasets"][key] = {}
+                    jsondict["datasets"][key]["name"] = key # TODO path = key.split("/")
+                    jsondict["datasets"][key]["shape"] = value.shape
+                    jsondict["datasets"][key]["ndim"] = value.ndim
+                    jsondict["datasets"][key]["dtype"] = value.dtype.str 
+                    jsondict["datasets"][key]["nbytes"] = value.nbytes.item()
+                    jsondict["datasets"][key]["is_dataset"] = True
+                    jsondict["datasets"][key]["absolute_path"] = value.name
+                    if value.nbytes < MAX_NUM_BYTES:
+                        data_np = np.zeros(value.shape)
+                        value.read_direct(data_np)
+                        jsondict["datasets"][key]["value"] = data_np.tolist()
+                        
             return jsondict
         
-        return _recurse(hdf5dict, {})
-    
-    def jsondict_to_jsonfile(self, jsondict, jsonfile):
+        jsondict = _recurse(hdf5dict, {})
+        
         with open(jsonfile, 'w') as f:
             f.write(json.dumps(jsondict))
-        return jsonfile
-    
-    def jsonfile_to_jsondict(self, jsonfile):
         
+    
+    def json_to_dosna(self, jsonfile, dosnaobject):
         with open(jsonfile, 'r') as f:
             jsonstring = f.read()
         jsondict = json.loads(jsonstring)
-        return jsondict
-
-    def jsondict_to_dosna(self, jsondict, dosnaobject):
-
-        def _recurse(jsondict, dosnadict):
+        def _recurse(jsondict, dosnadict, dosnaobject):
             for key, value in jsondict.items():
                 if isinstance(value, dict):
-                    dosnadict[key] = {}
-                    dosnadict[key][key] = dosnaobject.get_group(key)
-                    dosnadict[key] = _recurse(value, dosnadict[key])
-                elif isinstance(value, str):
-                    dataset = dosnaobject.get_dataset(key)
-                    dosnadict[key] = dataset
+
+                    if jsondict[key].get("is_dataset") or key=="datasets":
+                        pass
+                    else:
+                        dosnadict[key] = {}
+                        dosnaobject = dosnaobject.get_group(key)
+                        if "datasets" in value:
+                            for k, v in value["datasets"].items():
+                                dataset  = dosnaobject.get_group(k)
+                                dosnadict[key][k] = dataset
+                        dosnadict[key] = _recurse(value, dosnadict[key], dosnaobject)
             return dosnadict
         
-        return _recurse(jsondict, {})
+        return _recurse(jsondict, {}, dosnaobject)
 
 
 
 
 """
-con = dn.Connection("dn-ssfadss")
-
-# TESTING
-x = Hdf5todosna('testfile.h5')
-hdf5dict = x.hdf5_to_dict()
-dosnadict = x.hdf5dict_to_dosna(hdf5dict, con)
-#print(hdf5dict)
-jsondict = x.hdf5dict_to_jsondict(hdf5dict)
-jsonfile = x.jsondict_to_jsonfile(jsondict, 'testfile.json')
-jsondict = x.jsonfile_to_jsondict(jsonfile)
-dosnadict = x.jsondict_to_dosna(jsondict, con)
-#print("===============")
-#print(dosnadict)
-
-#print(con.datasets)
-
-import dosnatohdf5
-name = "movefile5.h5"
-y = dosnatohdf5.Dosnatohdf5(con)
-jsondict = y.dosnadict_to_jsondict(dosnadict)
-jsonfile = y.jsondict_to_jsonfile(jsondict, "test.json")
-jsondict = y.jsonfile_to_jsondict(jsonfile)
-h5file = y.jsondict_to_hdf5(jsondict, "testfile.h5")
-
-#h = h5py.File(name, "r")
-#print(h5file.keys())
-#hfile = y.dosna_to_hdf5(dosnadict, name)
-
-#print(hfile.keys())
-f = h5py.File('testfile.h5', "r")
-#print(f['bar'].keys())
-
 import hdf5todosna
 
 with h5py.File("testlinks.h5", "w") as f:
@@ -162,17 +150,30 @@ with h5py.File("try.h5", "w") as f:
     B = A.create_group("B")
     C = A.create_group("C")
     D = B.create_group("D")
+
     dset1 = B.create_dataset("dset1", shape=(2,2))
+    dset2 = B.create_dataset("dset2", shape=(2,2), chunks=(1,1))
+    dset3 = B.create_dataset("dset3", shape=(2,2), chunks=(1,1))
     
 x = Hdf5todosna('try.h5')
 con = dn.Connection("dn-csn")
+ss = con.create_group("ss")
 hdf5dict = x.hdf5_to_dict()
-#print(hdf5dict["B"]["dset1"].attrs['shape'])
-dosnadict = x.hdf5dict_to_dosna(hdf5dict, con)
-print(dosnadict)
-#jsondict = x.hdf5dict_to_jsondict(hdf5dict)
-#jsonfile = x.jsondict_to_jsonfile(jsondict, 'testlinks.json')
-#jsondict = x.jsonfile_to_jsondict(jsonfile)
-#dosnadict = x.jsondict_to_dosna(jsondict, con)
-#print("===============")
-#print(dosnadict)
+dndict1 = x.hdf5dict_to_dosna(hdf5dict, con)
+#print("1", dndict1)
+x.hdf5dict_to_json(hdf5dict, "mejor.json")
+dndict2 = x.json_to_dosna("mejor.json", con)
+print("1", dndict1)
+print("2", dndict2)
+#print(con.root_group.links) 
+a = con.get_group("A")
+
+#print(a.name)
+b = con.get_group("A/B")
+a.get_group("B")
+#print(b.name)
+#print(b.get_group("dset1").name)
+c = con.get_group("A/B/C")
+#print(c.name)
+d = con.get_group("A/B/D")
+#print(d.name)
