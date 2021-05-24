@@ -67,7 +67,11 @@ class EngineGroup(BackendWrapper):
         return group
         
     def get_group(self, name):
+        group = self.get_group(name)
+        return group
+        """
         raise NotImplemented('get_group not implemented for this engine')
+        """
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
@@ -79,10 +83,14 @@ class EngineGroup(BackendWrapper):
         return dataset
     
     def get_dataset(self, name):
+        dataset = self.get_dataset(name)
+        return dataset
+        
         # this is meant to wrap the dataset with the specific engine class
+        """
         raise NotImplementedError('`get_dataset` not implemented '
                                   'for this engine')
-
+        """
     def del_dataset(self, name):
         dataset = self.get_dataset(name)
         dataset.clear()

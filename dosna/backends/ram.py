@@ -305,12 +305,33 @@ class MemGroup(BackendGroup):
         link = MemLink(self, dataset, name)
         self.links[name] = link
         return dataset
-
+    
+    def get_dataset(self, path):
+        """
+        Retrieve an item, or information about an item. work like the standard Python
+        dict.get
+        """
+        def _recurse(arr, links):
+            if arr[0] in links:
+                link_target = links.get(arr[0]).target
+                if len(arr) > 1:
+                    arr.pop(0)
+                    return _recurse(arr, link_target.links)
+                else:
+                    return link_target
+        
+        path_elements = path.split("/")
+        group = _recurse(path_elements, self.links)
+        
+        if group is None:
+            raise GroupNotFoundError("Group ", path, "does not exist")
+        return group
+    """
     def get_dataset(self, name):
         if not self.has_dataset(name):
             raise DatasetNotFoundError("Dataset `%s` does not exist")
         return self.datasets[name]
-
+    """
     def has_dataset(self, name):
         return name in self.datasets
 

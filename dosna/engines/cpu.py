@@ -56,6 +56,10 @@ class CpuGroup(EngineGroup):
         if data is not None:
             engine_dataset.load(data)
         return engine_dataset
+    
+    def get_dataset(self, name):
+        dataset = self.instance.get_dataset(name)
+        return CpuDataset(dataset)
 
 
 class CpuDataset(EngineDataset):
