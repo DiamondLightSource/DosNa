@@ -14,9 +14,6 @@ from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendGroup, GroupNotFoundError)
 
 log = logging.getLogger(__name__)
-graph = {}
-vertices_no = 0
-
 
 class MemConnection(BackendConnection):
     """
@@ -96,16 +93,19 @@ class MemGroup(BackendGroup):
         super(MemGroup, self).__init__(parent, name, attrs)
         self.parent = parent
         self.links = {}
-        print("parent", parent.name)
-        print("name", name)
-        print("attrs", attrs)
-        print("===============")
         self.attrs = attrs
-        self.datasets = {} # TODO
+        self.datasets = {}
         self.connection = self.get_connection()
         self.absolute_path = self.get_absolute_path()
         
     def get_connection(self):
+        """
+        Recursively access the parent groups until the parent group is the
+        root group which is "/", then get the parent name of the root group
+        which is the name of the connection.
+        
+        :return name of the DosNa connection
+        """
         
         def find_connection(parent):
             if parent.name == "/":
@@ -119,6 +119,12 @@ class MemGroup(BackendGroup):
             return find_connection(self.parent)
         
     def get_absolute_path(self):
+        """
+        Recursively access the parent groups until the parent name is the root group "/"
+        and append the name of the parent groups to obtain the full path from the root group.
+        
+        :return absolute path name from the root group
+        """
         
         def find_path(parent):
             full_path = []
@@ -155,8 +161,7 @@ class MemGroup(BackendGroup):
     
     def items(self):
         """
-        Get (name, value) pairs for object directly attached to this group.
-        Values for broken soft or external links show up as None
+        Get (name, value) pairs for objects directly attached to this group.
         """
         items = {}
         for value in self.links.values():
@@ -166,7 +171,12 @@ class MemGroup(BackendGroup):
     def create_group(self, path, attrs=None):
         """
         Creates a new empty group.
+        Validates the path is alphanumeric.
+        If path is not in the links attached to the group, it will create a new group and link.
+        The link will the current group as source and the new group as target. The name of the link
+        is the name of the group.
         :param string that provides an absolute path or a relative path to the new group
+        :return new group
         """
         if not path.isalnum():
             raise Exception("String ", path, "is not alphanumeric")
@@ -176,14 +186,18 @@ class MemGroup(BackendGroup):
             self.links[path] = link
             
             return group
-
         else:
             raise Exception("Group", path, "already exists")
         
     def get_group(self, path):
         """
-        Retrieve an item, or information about an item. work like the standard Python
-        dict.get
+        Splits the path string for each slash found.
+        For each element in the resulting array, it checks recursively whether the first element
+        of the array is in the dictionary of links. If it is, it pops the the first element and
+        performs the same process with the next element of the array and the next group links.
+        
+        :param string that provides an absolute path or a relative path to the new group
+        :return DosNa group
         """
         def _recurse(arr, links):
             if arr[0] in links:
@@ -203,9 +217,13 @@ class MemGroup(BackendGroup):
     
     def has_group(self, path):
         """
-        Return immediately attached groups to this group
+        Splits the path string for each slash found.
+        For each element in the resulting array, it checks recursively whether the first element
+        of the array is in the dictionary of links. If it is, it pops the the first element and
+        performs the same process with the next element of the array and the next group links.
         """
         def _recurse(arr, links):
+            print(links)
             if arr[0] in links:
                 link_target = links.get(arr[0]).target
                 if len(arr) > 1:
@@ -224,15 +242,13 @@ class MemGroup(BackendGroup):
     
     def del_group(self, path):
         """
-        Return immediately attached groups to this group
+        Recursively access links to find group, and then deletes it. 
         """
         if not self.has_group(path):
             raise GroupNotFoundError("Group `%s` does not exist")
 
-        # TODO remove group or link, or both?
         def _recurse(arr, links):
             if arr[0] in links:
-                #link = links.get(arr[0])
                 link_target = links.get(arr[0]).target
                 log.debug('Removing Group `%s`', path)
                 if len(arr) > 1:
@@ -247,6 +263,7 @@ class MemGroup(BackendGroup):
     def visit(self):
         """
         Recursively visit all objects in this group and subgroups
+        :return all objects names of the groups and subgroups of this group
         """
         def _recurse(links):
             groups = []
@@ -260,10 +277,8 @@ class MemGroup(BackendGroup):
     
     def visititems(self):
         """
-        Recursively visit all objects in this group and subgroups.
-        Like Group.visit(), except your callable should have the signature:
-        callable (name, object)
-        In this case object will be a Group ro Dataset instance
+        Recursively visit all objects in this group and subgroups
+        :return all objects names of the groups, subgroups and datasets of this group
         """
         
         def _recurse(links):
@@ -312,32 +327,11 @@ class MemGroup(BackendGroup):
         self.links[name] = link
         return dataset
     
-    def get_dataset(self, path):
-        """
-        Retrieve an item, or information about an item. work like the standard Python
-        dict.get
-        """
-        def _recurse(arr, links):
-            if arr[0] in links:
-                link_target = links.get(arr[0]).target
-                if len(arr) > 1:
-                    arr.pop(0)
-                    return _recurse(arr, link_target.links)
-                else:
-                    return link_target
-        
-        path_elements = path.split("/")
-        group = _recurse(path_elements, self.links)
-        
-        if group is None:
-            raise GroupNotFoundError("Group ", path, "does not exist")
-        return group
-    """
     def get_dataset(self, name):
         if not self.has_dataset(name):
             raise DatasetNotFoundError("Dataset `%s` does not exist")
         return self.datasets[name]
-    """
+
     def has_dataset(self, name):
         return name in self.datasets
 
@@ -346,29 +340,16 @@ class MemGroup(BackendGroup):
             raise DatasetNotFoundError("Dataset `%s` does not exist")
         log.debug("Removing Dataset `%s`", name)
         del self.datasets[name]
-        
-    def create_metadata(self):
-        return self.metadata
     
     def get_metadata(self):
         return self.metadata
     
     def has_metadata(self):
-        return self.metadata
+        if metadata:
+            return self.metadata
     
     def del_metadata(self):
         return self.metadata
-    
-    def get_object_info(self):
-        """
-        Get information about the group
-        """
-        object_info = {}
-        object_info.update("Name", self.name)
-        object_info.update("Type", "Node")
-        object_info.update("Members", len(list(self.links.keys())))
-        
-        return object_info
         
     
 class MemDataset(BackendDataset):
