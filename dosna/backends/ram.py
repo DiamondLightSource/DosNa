@@ -24,13 +24,15 @@ class MemConnection(BackendConnection):
     """
     def __init__(self, *args, **kwargs):
         super(MemConnection, self).__init__(*args, **kwargs)
-        self.root_group = MemGroup(self, "/")
+        self.root_group = MemGroup(self, "/", attrs=None)
         self.datasets = {}
         self.links = {}
         
-    def create_group(self, path):
+    def create_group(self, path, attrs=None):
+        if not path.isalnum():
+            raise Exception("String ", path, "is not alphanumeric")
         if path != "/":
-            return self.root_group.create_group(path)
+            return self.root_group.create_group(path, attrs)
         else:
             raise Exception("Group", path, "already exists")
         
@@ -90,10 +92,14 @@ class MemLink():
         
 class MemGroup(BackendGroup):
     
-    def __init__(self, parent, name, attrs=None, *args, **kwargs):
-        super(MemGroup, self).__init__(name)
+    def __init__(self, parent, name, attrs, *args, **kwargs):
+        super(MemGroup, self).__init__(parent, name, attrs)
         self.parent = parent
         self.links = {}
+        print("parent", parent.name)
+        print("name", name)
+        print("attrs", attrs)
+        print("===============")
         self.attrs = attrs
         self.datasets = {} # TODO
         self.connection = self.get_connection()
@@ -157,7 +163,7 @@ class MemGroup(BackendGroup):
             items[value.name] = value.target
         return items
     
-    def create_group(self, path):
+    def create_group(self, path, attrs=None):
         """
         Creates a new empty group.
         :param string that provides an absolute path or a relative path to the new group
@@ -165,7 +171,7 @@ class MemGroup(BackendGroup):
         if not path.isalnum():
             raise Exception("String ", path, "is not alphanumeric")
         if not path in self.links:
-            group = MemGroup(self, path)
+            group = MemGroup(self, path, attrs)
             link = MemLink(self, group, path)
             self.links[path] = link
             

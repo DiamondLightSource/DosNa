@@ -23,8 +23,8 @@ class CpuConnection(EngineConnection):
         dataset = self.instance.get_dataset(name)
         return CpuDataset(dataset)
     
-    def create_group(self, name):
-        group = self.instance.create_group(name)
+    def create_group(self, name, attrs=None):
+        group = self.instance.create_group(name,attrs)
         engine_group = CpuGroup(group)
         return engine_group
 
@@ -39,8 +39,8 @@ class CpuConnection(EngineConnection):
     
 class CpuGroup(EngineGroup):
     
-    def create_group(self, name):
-        group = self.instance.create_group(name)
+    def create_group(self, name, attrs=None):
+        group = self.instance.create_group(name, attrs)
         engine_group = CpuGroup(group)
         return engine_group
     

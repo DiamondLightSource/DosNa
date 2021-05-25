@@ -33,8 +33,8 @@ class BackendWrapper(object):
 
 class EngineConnection(BackendWrapper):
     
-    def create_group(self, name):
-        group = self.instance.create_group(name)
+    def create_group(self, parent, name, attrs=None):
+        group = self.instance.create_group(parent, name, attrs)
         return group
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
@@ -61,8 +61,8 @@ class EngineConnection(BackendWrapper):
     
 class EngineGroup(BackendWrapper):
     
-    def create_group(self, name):
-        self.instance.create_group(name)
+    def create_group(self, parent, name, attrs=None):
+        self.instance.create_group(parent, name, attrs=None)
         group = self.get_group(name)
         return group
         

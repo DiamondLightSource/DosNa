@@ -12,33 +12,9 @@ def hdf_file(hdf, lazy=True, *args, **kwargs):
     """Context manager yields h5 file if hdf is str,
     otherwise just yield hdf as is."""
     if isinstance(hdf, str):
-        if not lazy:
-            with h5py.File(hdf, *args, **kwargs) as hdf:
-                yield hdf
-        else:
-            yield h5py.File(hdf, 'r',*args, **kwargs)
+        yield h5py.File(hdf, 'r',*args, **kwargs)
     else:
         yield hdf
-
-def unpack_dataset(item):
-    """Reconstruct a hdfdict dataset.
-    Only some special unpacking for yaml and datetime types.
-    Parameters
-    ----------
-    item : h5py.Dataset
-    Returns
-    -------
-    value : Unpacked Data
-
-    """
-    value = item[()]
-    if TYPEID in item.attrs:
-        if item.attrs[TYPEID].astype(str) == "datetime":
-            if hasattr(value, "__iter__"):
-                value = [datetime.fromtimestamp(ts) for ts in value]
-            else:
-                value = datetime.fromtimestamp(value)
-    return value
 
 class LazyHdfDict(UserDict):
     """Helps loading data only if values from the dict are requested.
@@ -83,7 +59,7 @@ class LazyHdfDict(UserDict):
         return tuple(self.keys())
 
 
-def load(hdf, lazy=True, unpacker=unpack_dataset, *args, **kwargs):
+def load(hdf, lazy=True, *args, **kwargs):
     """Returns a dictionary containing the
     groups as keys and the datasets as values
     from given hdf file.
@@ -105,24 +81,23 @@ def load(hdf, lazy=True, unpacker=unpack_dataset, *args, **kwargs):
     def _recurse(hdfobject, datadict):
         for key, value in hdfobject.items():
             if type(value) == h5py.Group or isinstance(value, LazyHdfDict):
-                if lazy:
-
-                    datadict[key] = LazyHdfDict()
-                else:
-                    datadict[key] = {}
+                datadict[key] = LazyHdfDict()
+                metadata = {}
+                for a in value.attrs.items():
+                    key_attr, value_attr = a
+                    metadata[key_attr] = value_attr
+                #for a in value.attrs:
+                #    print(a.)
+                #print(value.attrs.get("a1"))
+                datadict[key]["metadata"] = metadata
                 datadict[key] = _recurse(value, datadict[key])
             elif isinstance(value, h5py.Dataset):
-                if not lazy:
-                    value = unpacker(value)
                 datadict[key] = value
 
         return datadict
 
     with hdf_file(hdf, lazy=lazy, *args, **kwargs) as hdf:
-        if lazy:
-            data = LazyHdfDict(_h5file=hdf)
-        else:
-            data = {}
+        data = LazyHdfDict(_h5file=hdf)
         return _recurse(hdf, data)
 
 

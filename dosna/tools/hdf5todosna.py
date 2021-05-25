@@ -36,12 +36,15 @@ class Hdf5todosna():
         hdf5dict = hd.load(self._h5file, lazy=True)
         return hdf5dict
     
-    def hdf5dict_to_dosna(self, hdf5dict, dosnaobject): 
+    def hdf5dict_to_dosna(self, hdf5dict, dosnaobject):
+        #print(hdf5dict) 
         def _recurse(hdf5dict, dosnadict, group):
             for key, value in hdf5dict.items():
                 if isinstance(value, LazyHdfDict):
                     dosnadict[key] = {}
-                    group = group.create_group(key)
+                    attrs = value["metadata"]
+                    group = group.create_group(key, attrs)
+
                     for k, v in value.items():
                         if isinstance(v, Dataset):
                             #unique_id = k + "-" + str(uuid.uuid4())
@@ -143,6 +146,12 @@ with h5py.File("try.h5", "w") as f:
     B = A.create_group("B")
     C = A.create_group("C")
     D = B.create_group("D")
+    
+    A.attrs["a1"] = "Otro_valor"
+    A.attrs["a2"] = "Otro_valor"
+    A.attrs["a3"] = "Otro_valor"
+    A.attrs["a4"] = "Otro_valor"
+    C.attrs["c1"] = "Valor"
 
     dset1 = B.create_dataset("dset1", shape=(2,2))
     dset2 = B.create_dataset("dset2", shape=(2,2), chunks=(1,1))
@@ -150,7 +159,6 @@ with h5py.File("try.h5", "w") as f:
     
 x = Hdf5todosna('try.h5')
 con = dn.Connection("dn-csn")
-ss = con.create_group("ss")
 hdf5dict = x.hdf5_to_dict()
 dndict1 = x.hdf5dict_to_dosna(hdf5dict, con)
 #print("1", dndict1)
