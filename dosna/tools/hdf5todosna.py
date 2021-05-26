@@ -90,12 +90,10 @@ class Hdf5todosna():
                         
             return jsondict
         
-        jsondict = _recurse(hdf5dict, {})
-        
         with open(jsonfile, 'w') as f:
             f.write(json.dumps(jsondict))
         
-        return jsondict
+        return _recurse(hdf5dict, {})
 
     
     def json_to_dosna(self, jsonfile, dosnaobject):
