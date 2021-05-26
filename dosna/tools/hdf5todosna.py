@@ -19,55 +19,64 @@ from dosna.backends.base import (BackendConnection, BackendDataChunk,
 
 from h5py._hl.dataset import Dataset
 
-MAX_NUM_BYTES = 20
-
 class Hdf5todosna():
     """
     Includes methods to transform HDF5 to DosNa Objects
     """
 
-    def __init__(self, h5file=None, *args, **kwargs):
+    def __init__(self, h5file=None, max_num_bytes=5, *args, **kwargs):
         self._h5file = h5file
+        self.max_num_bytes = max_num_bytes
 
     def hdf5_to_dict(self):
-        """
-        Tranforms the HDF5 file into a dictionary
-        """
         hdf5dict = hd.load(self._h5file, lazy=True)
         return hdf5dict
     
-    def hdf5dict_to_dosna(self, hdf5dict, dosnaobject):
-        #print(hdf5dict) 
+    def hdf5dict_to_dosna(self, hdf5dict, dosnaconnection):
+        
+        def _create_dataset(name, h5_dataset, group):
+            if h5_dataset.nbytes > self.max_num_bytes:
+                dosna_dataset = group.create_dataset(
+                                name,
+                                shape=h5_dataset.shape,
+                                dtype=h5_dataset.dtype,
+                                chunk_size=h5_dataset.chunks)
+                if h5_dataset.chunks is not None:
+                    for chunk in h5_dataset.iter_chunks():
+                        dosna_dataset[chunk] = h5_dataset[chunk]
+                else:
+                    pass # TODO copy dataset?
+            else:
+                dosna_dataset = np.zeros(v.shape) # TODO: this doesn't get stored
+                v.read_direct(dosna_dataset)
+            return dosna_dataset
+            
+        
         def _recurse(hdf5dict, dosnadict, group):
             for key, value in hdf5dict.items():
                 if isinstance(value, LazyHdfDict):
                     dosnadict[key] = {}
                     attrs = value["metadata"]
                     group = group.create_group(key, attrs)
-
                     for k, v in value.items():
                         if isinstance(v, Dataset):
                             #unique_id = k + "-" + str(uuid.uuid4())
-                            if v.nbytes > 5:
-                                dataset = group.create_dataset(
-                                k,
-                                shape=v.shape,
-                                dtype=v.dtype,
-                                chunk_size=v.chunks,
-                            )
-                                if v.chunks is not None:
-                                    for chunk in v.iter_chunks():
-                                        dataset[chunk] = v[chunk]
-                            else:
-                                dataset = np.zeros(v.shape)
-                                v.read_direct(dataset)
-                            dosnadict[key][k] = dataset 
-                    dosnadict[key] = _recurse(value, dosnadict[key], group) 
+                            dosna_dataset = _create_dataset(k, v, group)
+                            dosnadict[key][k] = dosna_dataset 
+                    dosnadict[key] = _recurse(value, dosnadict[key], group)
+                else:
+                    if isinstance(value, Dataset):
+                        print(group.name)
             return dosnadict
-        return _recurse(hdf5dict, {}, dosnaobject)
+        
+        return _recurse(hdf5dict, {}, dosnaconnection)
 
 
     def hdf5dict_to_json(self, hdf5dict, jsonfile): #TODO specify which type of json you are returning
+        
+        
+        #Group B {datasets: {dset1: name: sfss}}
+        #Group B {dset1: dset1, GroupC} # change datasets to the attribute # they have these attributes # whether alway sthe case
         
         def _recurse(hdf5dict, jsondict):
             for key, value in hdf5dict.items():
@@ -85,7 +94,7 @@ class Hdf5todosna():
                     jsondict["datasets"][key]["nbytes"] = value.nbytes.item()
                     jsondict["datasets"][key]["is_dataset"] = True
                     jsondict["datasets"][key]["absolute_path"] = value.name
-                    if value.nbytes < MAX_NUM_BYTES:
+                    if value.nbytes < self.max_num_bytes:
                         data_np = np.zeros(value.shape)
                         value.read_direct(data_np)
                         jsondict["datasets"][key]["value"] = data_np.tolist()
@@ -108,13 +117,14 @@ class Hdf5todosna():
             for key, value in jsondict.items():
                 if isinstance(value, dict):
                     if jsondict[key].get("is_dataset") or key=="datasets":
-                        pass
+                        pass # TODO 
                     else:
                         dosnadict[key] = {}
                         dosnaobject = dosnaobject.get_group(key)
                         if "datasets" in value:
                             for k, v in value["datasets"].items():
                                 dataset  = dosnaobject.get_dataset(k)
+                                #print(dosnaobject)
                                 dosnadict[key][k] = dataset
                         dosnadict[key] = _recurse(value, dosnadict[key], dosnaobject)
             return dosnadict
@@ -141,7 +151,9 @@ with h5py.File("testlinks.h5", "w") as f:
 
 
 """
-with h5py.File("try.h5", "w") as f:
+f = h5py.File("newfile.h5", "w")
+f.close()
+with h5py.File("newfile.h5", "w") as f:
     A = f.create_group("A")
     B = A.create_group("B")
     C = A.create_group("C")
@@ -157,17 +169,26 @@ with h5py.File("try.h5", "w") as f:
     dset2 = B.create_dataset("dset2", shape=(2,2), chunks=(1,1))
     dset3 = B.create_dataset("dset3", shape=(2,2), chunks=(1,1))
     
-x = Hdf5todosna('try.h5')
+x = Hdf5todosna('newfile.h5')
 con = dn.Connection("dn-csn")
 hdf5dict = x.hdf5_to_dict()
 dndict1 = x.hdf5dict_to_dosna(hdf5dict, con)
-#print("1", dndict1)
+print("1", dndict1)
 x.hdf5dict_to_json(hdf5dict, "mejor.json")
 dndict2 = x.json_to_dosna("mejor.json", con)
-print("1", dndict1)
-print("2", dndict2)
-#print(con.root_group.links) 
+print("============")
+print(dndict2)
 a = con.get_group("A")
+#print(a.get_groups())
+#print(a.get_objects())
+"""
+#print(hdf5dict)
+#print("====================")
+#print("1", dndict1)
+#print("=======================")
+#print("2", dndict2)
+#print(con.root_group.links) 
+
 
 #print(a.name)
 b = con.get_group("A/B")
@@ -177,4 +198,8 @@ a.get_group("B")
 c = con.get_group("A/B/C")
 #print(c.name)
 d = con.get_group("A/B/D")
+
+print(b.create_dataset("dset5", shape=(2,2)))
+print(b.get_dataset("dset1"))
 #print(d.name)
+"""
