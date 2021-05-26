@@ -23,11 +23,6 @@ class CpuConnection(EngineConnection):
         dataset = self.instance.get_dataset(name)
         return CpuDataset(dataset)
     
-    def create_group(self, name, attrs=None):
-        group = self.instance.create_group(name,attrs)
-        engine_group = CpuGroup(group)
-        return engine_group
-
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
         dataset = self.instance.create_dataset(name, shape, dtype, fillvalue,
@@ -36,6 +31,17 @@ class CpuConnection(EngineConnection):
         if data is not None:
             engine_dataset.load(data)
         return engine_dataset
+    
+    def get_group(self, name):
+        group = self.instance.get_group(name)
+        return CpuGroup(group)
+
+    def create_group(self, name, attrs=None):
+        group = self.instance.create_group(name,attrs)
+        engine_group = CpuGroup(group)
+        return engine_group
+
+
     
 class CpuGroup(EngineGroup):
     

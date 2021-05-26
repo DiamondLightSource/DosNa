@@ -97,6 +97,7 @@ class MemGroup(BackendGroup):
         self.datasets = {}
         self.connection = self.get_connection()
         self.absolute_path = self.get_absolute_path()
+        #self.path_split = 
         
     def get_connection(self):
         """
@@ -208,14 +209,14 @@ class MemGroup(BackendGroup):
                 else:
                     return link_target
         
-        path_elements = path.split("/")
+        path_elements = path.split("/") # TODO change this
         group = _recurse(path_elements, self.links)
         
         if group is None:
             raise GroupNotFoundError("Group ", path, "does not exist")
         return group
     
-    def has_group(self, path):
+    def has_group(self, path): # TODO: get group
         """
         Splits the path string for each slash found.
         For each element in the resulting array, it checks recursively whether the first element
@@ -260,7 +261,7 @@ class MemGroup(BackendGroup):
         arr = path.split("/")
         _recurse(arr, self.links)
         
-    def visit(self):
+    def visit(self): # TODO docstring
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups and subgroups of this group
@@ -273,9 +274,17 @@ class MemGroup(BackendGroup):
                     groups += _recurse(value.target.links)
             return groups
         
+        """
+        f.visit()
+        A has groups B, C, D
+        B has group E
+        
+        f.visit() = [A, B, C, D, E]
+        f.visit() = [A, A/B, A/C, A/D, A/B/E]
+        """
         return _recurse(self.links)
     
-    def visititems(self):
+    def visititems(self): # TODO visit datasets
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups, subgroups and datasets of this group
