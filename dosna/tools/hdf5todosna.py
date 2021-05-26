@@ -47,28 +47,23 @@ class Hdf5todosna():
                 else:
                     pass # TODO copy dataset?
             else:
-                dosna_dataset = np.zeros(v.shape) # TODO: this doesn't get stored
-                v.read_direct(dosna_dataset)
+                dosna_dataset = np.zeros(h5_dataset.shape) # TODO: this doesn't get stored
+                h5_dataset.read_direct(dosna_dataset)
             return dosna_dataset
-            
         
         def _recurse(hdf5dict, dosnadict, group):
             for key, value in hdf5dict.items():
                 if isinstance(value, LazyHdfDict):
                     dosnadict[key] = {}
-                    attrs = value["metadata"]
-                    group = group.create_group(key, attrs)
-                    for k, v in value.items():
-                        if isinstance(v, Dataset):
-                            #unique_id = k + "-" + str(uuid.uuid4())
-                            dosna_dataset = _create_dataset(k, v, group)
-                            dosnadict[key][k] = dosna_dataset 
-                    dosnadict[key] = _recurse(value, dosnadict[key], group)
+                    subgroup = group.create_group(key, value["metadata"])
+                    dosnadict[key] = _recurse(value, dosnadict[key], subgroup)
                 else:
                     if isinstance(value, Dataset):
-                        print(group.name)
+                        dosna_dataset = _create_dataset(key, value, group)
+                        dosnadict[key] = dosna_dataset 
             return dosnadict
-        
+            
+
         return _recurse(hdf5dict, {}, dosnaconnection)
 
 
@@ -175,10 +170,15 @@ hdf5dict = x.hdf5_to_dict()
 dndict1 = x.hdf5dict_to_dosna(hdf5dict, con)
 print("1", dndict1)
 x.hdf5dict_to_json(hdf5dict, "mejor.json")
-dndict2 = x.json_to_dosna("mejor.json", con)
-print("============")
-print(dndict2)
 a = con.get_group("A")
+b = a.get_group("B")
+d = b.get_group("D")
+print(b.links)
+print(d.links)
+#dndict2 = x.json_to_dosna("mejor.json", con)
+#print("============")
+#print(dndict2)
+#a = con.get_group("A")
 #print(a.get_groups())
 #print(a.get_objects())
 """
