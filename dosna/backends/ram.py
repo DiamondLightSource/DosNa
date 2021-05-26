@@ -23,7 +23,6 @@ class MemConnection(BackendConnection):
         super(MemConnection, self).__init__(*args, **kwargs)
         self.root_group = MemGroup(self, "/", attrs=None)
         self.datasets = {}
-        self.links = {}
         
     def create_group(self, path, attrs=None):
         if not path.isalnum():
@@ -81,7 +80,7 @@ class MemConnection(BackendConnection):
         log.debug('Removing Dataset `%s`', name)
         del self.datasets[name]
         
-class MemLink():
+class MemLink(): # TODO implement this in
     def __init__(self, source, target, name):
         self.source = source
         self.target = target
@@ -95,9 +94,9 @@ class MemGroup(BackendGroup):
         self.links = {}
         self.attrs = attrs
         self.datasets = {}
-        self.connection = self.get_connection()
-        self.absolute_path = self.get_absolute_path()
-        #self.path_split = 
+        self.connection = self.get_connection() # TODO is this necessary?
+        self.absolute_path = self.get_absolute_path() # TODO too much recursion?
+        #self.path_split = TODO
         
     def get_connection(self):
         """
@@ -107,18 +106,14 @@ class MemGroup(BackendGroup):
         
         :return name of the DosNa connection
         """
-        
-        def find_connection(parent):
-            if parent.name == "/":
-                return parent.parent.name
+        def find_connection(group):
+            if group.name == "/":
+                return group.parent.name
             else:
-                return find_connection(parent.parent)
+                return find_connection(group.parent)
             
-        if self.name == "/":
-            return self.parent.name
-        else:
-            return find_connection(self.parent)
-        
+        return find_connection(self)
+    
     def get_absolute_path(self):
         """
         Recursively access the parent groups until the parent name is the root group "/"
@@ -127,23 +122,19 @@ class MemGroup(BackendGroup):
         :return absolute path name from the root group
         """
         
-        def find_path(parent):
+        def find_path(group):
             full_path = []
-            if parent.name == "/":
+            if group.name == "/":
                 return full_path
             else:
-                full_path.append(parent.name)
-                full_path += find_path(parent.parent)
+                full_path.append(group.name)
+                full_path += find_path(group.parent)
             return full_path
         
-        if self.name == "/":
-            return self.name
-        else:
-            full_path_list = find_path(self.parent)
-            full_path_list.reverse()
-            full_path_list.append(self.name)
-            full_path = "/" + '/'.join(full_path_list)
-            return full_path
+        full_path_list = find_path(self)
+        full_path_list.reverse()
+        full_path = "/" + '/'.join(full_path_list)
+        return full_path
     
     def keys(self):
         """
@@ -181,14 +172,14 @@ class MemGroup(BackendGroup):
         """
         if not path.isalnum():
             raise Exception("String ", path, "is not alphanumeric")
-        if not path in self.links:
+        elif path in self.links:
+            raise Exception("Group", path, "already exists")
+        else:
             group = MemGroup(self, path, attrs)
             link = MemLink(self, group, path)
             self.links[path] = link
-            
             return group
-        else:
-            raise Exception("Group", path, "already exists")
+            
         
     def get_group(self, path):
         """
@@ -223,22 +214,10 @@ class MemGroup(BackendGroup):
         of the array is in the dictionary of links. If it is, it pops the the first element and
         performs the same process with the next element of the array and the next group links.
         """
-        def _recurse(arr, links):
-            print(links)
-            if arr[0] in links:
-                link_target = links.get(arr[0]).target
-                if len(arr) > 1:
-                    arr.pop(0)
-                    return _recurse(arr, link_target.links)
-                else:
-                    return link_target
-        
-        arr = path.split("/")
-        group = _recurse(arr, self.links)
-        
-        if group is None:
-            raise GroupNotFoundError("Group `%s` does not exist")
-        return True
+        if self.get_group(path):
+            True
+        else:
+            raise GroupNotFoundError("Group", path, "does not exist")
         
     
     def del_group(self, path):
@@ -246,12 +225,12 @@ class MemGroup(BackendGroup):
         Recursively access links to find group, and then deletes it. 
         """
         if not self.has_group(path):
-            raise GroupNotFoundError("Group `%s` does not exist")
+            raise GroupNotFoundError("Group", path, "does not exist")
 
         def _recurse(arr, links):
             if arr[0] in links:
                 link_target = links.get(arr[0]).target
-                log.debug('Removing Group `%s`', path)
+                log.debug("Removing Group", path)
                 if len(arr) > 1:
                     arr.pop(0)
                     return _recurse(arr, link_target.links)
@@ -261,7 +240,7 @@ class MemGroup(BackendGroup):
         arr = path.split("/")
         _recurse(arr, self.links)
         
-    def visit(self): # TODO docstring
+    def get_groups(self): # TODO docstring
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups and subgroups of this group
@@ -269,22 +248,16 @@ class MemGroup(BackendGroup):
         def _recurse(links):
             groups = []
             for key, value in links.items():
-                if hasattr(value.target, "links"):
-                    groups.append(key)
-                    groups += _recurse(value.target.links)
+                subgroup = value.target
+                if hasattr(subgroup, "links"):
+                    #groups.append(key)
+                    groups.append(subgroup.absolute_path)
+                    groups += _recurse(subgroup.links)
             return groups
         
-        """
-        f.visit()
-        A has groups B, C, D
-        B has group E
-        
-        f.visit() = [A, B, C, D, E]
-        f.visit() = [A, A/B, A/C, A/D, A/B/E]
-        """
         return _recurse(self.links)
     
-    def visititems(self): # TODO visit datasets
+    def get_objects(self): # TODO visit datasets not absolute path
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups, subgroups and datasets of this group

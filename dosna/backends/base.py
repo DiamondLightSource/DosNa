@@ -89,8 +89,8 @@ class BackendGroup(object):
     
     def __init__(self, parent, name, attrs, *args, **kwargs):
         
-        #if not connection.has_group(name):
-        #    raise Exception('Wrong initialization of a Dataset')
+        #if not parent.has_group(name): # TODO
+        #    raise Exception('Wrong initialization of a Group')
         self._parent = parent
         self._name = name
         self._attrs = attrs
