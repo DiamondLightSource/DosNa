@@ -36,6 +36,14 @@ class EngineConnection(BackendWrapper):
     def create_group(self, parent, name, attrs=None):
         group = self.instance.create_group(parent, name, attrs)
         return group
+    
+    def get_group(self, name):
+        group = self.instance.get_group(name)
+        return group
+    
+    def del_group(self, name):
+        group = self.get_group(name)
+        self.instance.del_group(name)
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):

@@ -41,7 +41,6 @@ class CpuConnection(EngineConnection):
         engine_group = CpuGroup(group)
         return engine_group
 
-
     
 class CpuGroup(EngineGroup):
     
