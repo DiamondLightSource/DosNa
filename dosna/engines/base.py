@@ -106,6 +106,18 @@ class EngineGroup(BackendWrapper):
 
     def __getitem__(self, dataset_name):
         return self.get_dataset(dataset_name)
+    
+class EngineLink(BackendWrapper):
+    
+    def get_source(self):
+        return self.get_source()
+    
+    def get_target(self):
+        return self.get_source()
+    
+    def get_name(self):
+        return self.get_name()
+    
 
 
 class EngineDataset(BackendWrapper):

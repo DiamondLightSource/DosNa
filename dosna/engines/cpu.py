@@ -6,7 +6,7 @@ import numpy as np
 
 from dosna.backends import get_backend
 from dosna.engines import Engine
-from dosna.engines.base import EngineConnection, EngineGroup, EngineDataChunk, EngineDataset
+from dosna.engines.base import EngineConnection, EngineGroup, EngineLink, EngineDataChunk, EngineDataset
 from six.moves import range
 
 log = logging.getLogger(__name__)
@@ -65,6 +65,17 @@ class CpuGroup(EngineGroup):
     def get_dataset(self, name):
         dataset = self.instance.get_dataset(name)
         return CpuDataset(dataset)
+    
+class CpuLink(EngineLink):
+    
+    def get_source(self):
+        return self.instance.get_source()
+    
+    def get_target(self):
+        return self.instance.get_target()
+    
+    def get_name(self):
+        return self.instance.get_name()
 
 
 class CpuDataset(EngineDataset):

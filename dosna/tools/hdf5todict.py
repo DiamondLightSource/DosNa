@@ -4,6 +4,7 @@ from collections import UserDict
 from datetime import datetime
 from numpy import string_
 from contextlib import contextmanager
+import uuid
 
 TYPEID = "_type_"
 
@@ -86,12 +87,10 @@ def load(hdf, lazy=True, *args, **kwargs):
                 for a in value.attrs.items():
                     key_attr, value_attr = a
                     metadata[key_attr] = value_attr
-                #for a in value.attrs:
-                #    print(a.)
-                #print(value.attrs.get("a1"))
                 datadict[key]["metadata"] = metadata
                 datadict[key] = _recurse(value, datadict[key])
             elif isinstance(value, h5py.Dataset):
+                key = key + "-" + str(uuid.uuid4())
                 datadict[key] = value
 
         return datadict

@@ -25,18 +25,20 @@ class Dosnatohdf5():
         self.max_num_bytes = 5
         
     def dosna_to_dict(self):
-        root_group = self._connection.root_group
-        def _recurse(links, dosnadict):
+        links = self._connection.root_group.links
+
+        def _recurse(dosnadict, links, group):
             for key, value in links.items():
-                dosnadict[key] = {}
-                if hasattr(value.target, "shape"):
-                    dataset = value.target
-                    dosnadict[key] = dataset
+                subgroup = group.get_group(key)
+                if hasattr(subgroup, "links"):
+                    sub_links = subgroup.links
+                    dosnadict[key] = {}
+                    dosnadict[key] = _recurse(dosnadict[key], sub_links, subgroup)
                 else:
-                    links = value.target.links
-                    dosnadict[key] = _recurse(links, dosnadict[key])
+                    dosnadict[key] = group.get_dataset(key)
             return dosnadict
-        return _recurse(root_group.links, {})
+        dosnadict = _recurse({}, links, self._connection)
+        return dosnadict
     
     def dosnadict_to_hdf5(self, dosnadict, h5file):
         
@@ -58,11 +60,9 @@ class Dosnatohdf5():
                         )
                     else:
                         raise Exception("Dataset", key, "already created")
-                        """
                         if dataset.chunks is not None:
                             for s in dataset.iter_chunks():
                                 dataset[s] = value[s]
-                        """
         with h5py.File(h5file, "w") as hdf:
             _recurse(dosnadict, hdf)
             return hdf
@@ -78,7 +78,7 @@ class Dosnatohdf5():
                     jsondict[key] = {}
                     jsondict[key]["name"] = key # TODO path = key.split("/")
                     jsondict[key]["shape"] = value.shape
-                    jsondict[key]["dtype"] = value.dtype.__name__
+                    jsondict[key]["dtype"] = str(value.dtype)
                     jsondict[key]["fillvalue"] = value.fillvalue
                     jsondict[key]["chunk_size"] = value.chunk_size
                     jsondict[key]["chunk_grid"] = value.chunk_grid.tolist()
@@ -109,3 +109,42 @@ class Dosnatohdf5():
         with h5py.File(h5file, "r") as hdf:
             _recurse(jsondict, {}, hdf)
             return hdf
+        
+    def hdf5file_to_hdf5dict(self, hdf5file):
+        hdf5dict = hd.load(hdf5file)
+        return hdf5dict
+       
+"""
+con = dn.Connection("dn-connection") 
+con.connect()
+metadata = {"a1": "value"}
+A = con.create_group("A", metadata)
+B = A.create_group("B", metadata)
+C = A.create_group("C", metadata)
+D = B.create_group("D", metadata)
+
+dset1 = B.create_dataset("dset1", shape=(3,3))
+dset2 = B.create_dataset("dset2", shape=(3,3))
+dset3 = B.create_dataset("dset3", shape=(3,3))
+
+x = Dosnatohdf5(con)
+dosnadict = x.dosna_to_dict()
+print(dosnadict)
+hdf5 = x.dosnadict_to_hdf5(dosnadict, "test_file.h5")
+jsondict = x.dosnadict_to_jsondict(dosnadict, "dosna_file.json")
+hdf52 = x.json_to_hdf5("dosna_file.json", "test_file.h5")
+hdfdict = x.hdf5file_to_hdf5dict("test_file.h5")
+print(hdfdict)
+#print(jsondict)
+
+with h5py.File("test_file.h5", 'r') as f:
+    print(f.keys())
+    print(f["A"].keys())
+    print(f["A/B"].keys())
+    
+
+with h5py.File("test_file_2.h5", 'r') as f:
+    print(f.keys())
+    print(f["A"].keys())
+    print(f["A/B"].keys())
+"""

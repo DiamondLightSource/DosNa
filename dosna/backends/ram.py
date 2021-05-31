@@ -23,7 +23,8 @@ class MemConnection(BackendConnection):
         super(MemConnection, self).__init__(*args, **kwargs)
         self.root_group = MemGroup(self, "/", attrs=None)
         self.datasets = {}
-        
+        self.links = {}
+
     def create_group(self, path, attrs=None):
         if not path.isalnum():
             raise Exception("String ", path, "is not alphanumeric")
@@ -40,7 +41,7 @@ class MemConnection(BackendConnection):
         
     def del_group(self, path):
         self.root_group.del_group(path)
-    
+
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
 
@@ -85,7 +86,16 @@ class MemLink(): # TODO implement this in
         self.source = source
         self.target = target
         self.name = name
-        
+    
+    def get_source(self):
+        return self.source
+    
+    def get_target(self):
+        return self.target
+    
+    def get_name(self):
+        return self.name
+            
 class MemGroup(BackendGroup):
     
     def __init__(self, parent, name, attrs, *args, **kwargs):
@@ -240,7 +250,7 @@ class MemGroup(BackendGroup):
         arr = path.split("/")
         _recurse(arr, self.links)
         
-    def get_groups(self): # TODO docstring
+    def get_all_groups(self): # TODO docstring
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups and subgroups of this group
@@ -257,7 +267,7 @@ class MemGroup(BackendGroup):
         
         return _recurse(self.links)
     
-    def get_objects(self): # TODO visit datasets not absolute path
+    def get_all_objects(self): # TODO visit datasets not absolute path
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups, subgroups and datasets of this group
@@ -272,8 +282,10 @@ class MemGroup(BackendGroup):
             return objects
         
         return _recurse(self.links)
+    
+    def get_links(self):
+        return self.links
         
-
     def create_dataset(
         self,
         name,
