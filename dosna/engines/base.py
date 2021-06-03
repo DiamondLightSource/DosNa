@@ -33,12 +33,17 @@ class BackendWrapper(object):
 
 class EngineConnection(BackendWrapper):
     
-    def create_group(self, parent, name, attrs=None):
+    def create_group(self, parent, name, attrs={}):
         group = self.instance.create_group(parent, name, attrs)
         return group
     
     def get_group(self, name):
         group = self.instance.get_group(name)
+        return group
+
+    def get_object(self, name):
+        group = self.instance.get_object(name)
+        print(group)
         return group
     
     def del_group(self, name):
@@ -64,13 +69,13 @@ class EngineConnection(BackendWrapper):
         dataset.clear()
         self.instance.del_dataset(name)
 
-    def __getitem__(self, dataset_name):
-        return self.get_dataset(dataset_name)
+    def __getitem__(self, group_name):
+        return self.get_group(group_name)
     
 class EngineGroup(BackendWrapper):
     
-    def create_group(self, parent, name, attrs=None):
-        self.instance.create_group(parent, name, attrs=None)
+    def create_group(self, parent, name, attrs={}):
+        self.instance.create_group(parent, name, attrs={})
         group = self.get_group(name)
         return group
         
@@ -104,8 +109,8 @@ class EngineGroup(BackendWrapper):
         dataset.clear()
         self.instance.del_dataset(name)
 
-    def __getitem__(self, dataset_name):
-        return self.get_dataset(dataset_name)
+    def __getitem__(self, group_name):
+        return self.get_group(group_name)
     
 class EngineLink(BackendWrapper):
     

@@ -36,15 +36,16 @@ class CpuConnection(EngineConnection):
         group = self.instance.get_group(name)
         return CpuGroup(group)
 
-    def create_group(self, name, attrs=None):
+    def create_group(self, name, attrs={}):
         group = self.instance.create_group(name,attrs)
         engine_group = CpuGroup(group)
         return engine_group
 
+
     
 class CpuGroup(EngineGroup):
     
-    def create_group(self, name, attrs=None):
+    def create_group(self, name, attrs={}):
         group = self.instance.create_group(name, attrs)
         engine_group = CpuGroup(group)
         return engine_group
@@ -65,6 +66,11 @@ class CpuGroup(EngineGroup):
     def get_dataset(self, name):
         dataset = self.instance.get_dataset(name)
         return CpuDataset(dataset)
+
+    def get_object(self, name):
+        object = self.instance.get_object(name)
+        # TODO differentiate group from dataset
+        return object
     
 class CpuLink(EngineLink):
     
