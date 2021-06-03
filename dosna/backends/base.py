@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 class BackendConnection(object):
 
     def __init__(self, name, open_mode="a", *args, **kwargs):
+        # TODO root_group
         self._name = name
         self._connected = False
         self._mode = open_mode
@@ -54,7 +55,7 @@ class BackendConnection(object):
     def __contains__(self, name):
         return self.has_dataset(name)
     
-    def create_group(self, parent, name, attrs=None):
+    def create_group(self, parent, name, attrs={}):
         raise NotImplementedError('`create_group` not implemented '
                                   'for this backend')
     def get_group(self):
@@ -88,9 +89,7 @@ class BackendConnection(object):
 class BackendGroup(object):
     
     def __init__(self, parent, name, attrs, *args, **kwargs):
-        
-        #if not parent.has_group(name): # TODO
-        #    raise Exception('Wrong initialization of a Group')
+
         self._parent = parent
         self._name = name
         self._attrs = attrs
@@ -99,15 +98,13 @@ class BackendGroup(object):
     def name(self):
         return self._name
     
-    def __getitem__(self, name):
+    def __getitem__(self, name):     #TODO: get dataset and group
         return self.get_dataset(name)
-    
-    #TODO: two separate methods for the group and the dataset?
-    
+
     def __contains__(self, name):
         return self.has_dataset(name)
     
-    def create_group(self, parent, name, attrs=None):
+    def create_group(self, parent, name, attrs={}):
         raise NotImplementedError('`create_group` not implemented '
                                   'for this backend')
     def get_group(self):
@@ -143,7 +140,7 @@ class BackendLink(object):
     def __init__(self, source, target, path):
         self._source = source
         self._target = target
-        self._name = name
+        self._path = path
         
     @property
     def source(self):
@@ -155,7 +152,7 @@ class BackendLink(object):
 
     @property
     def name(self):
-        return self._name
+        return self._path
     
 
 

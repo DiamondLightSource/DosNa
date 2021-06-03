@@ -11,7 +11,8 @@ import string
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendDataset, DatasetNotFoundError,
-                                 BackendGroup, GroupNotFoundError)
+                                 BackendGroup, GroupNotFoundError,
+                                 BackendLink)
 
 log = logging.getLogger(__name__)
 
@@ -21,11 +22,11 @@ class MemConnection(BackendConnection):
     """
     def __init__(self, *args, **kwargs):
         super(MemConnection, self).__init__(*args, **kwargs)
-        self.root_group = MemGroup(self, "/", attrs=None)
+        self.connection = self
+        self.root_group = MemGroup(self, "/", attrs={})
         self.datasets = {}
-        self.links = {}
 
-    def create_group(self, path, attrs=None):
+    def create_group(self, path, attrs={}):
         if not path.isalnum():
             raise Exception("String ", path, "is not alphanumeric")
         if path != "/":
@@ -43,8 +44,11 @@ class MemConnection(BackendConnection):
         self.root_group.del_group(path)
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
-                       data=None, chunk_size=None):
-
+                       data=None, chunk_size=None, uuid=False):
+        """
+        if uuid:
+            name = name = name + "-" + str(uuid.uuid4())
+        """
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception('Provide `shape` and `dtype` or `data`')
         if self.has_dataset(name):
@@ -81,11 +85,9 @@ class MemConnection(BackendConnection):
         log.debug('Removing Dataset `%s`', name)
         del self.datasets[name]
         
-class MemLink(): # TODO implement this in
+class MemLink(BackendLink):
     def __init__(self, source, target, name):
-        self.source = source
-        self.target = target
-        self.name = name
+        super(MemLink, self).__init__(source, target, name)
     
     def get_source(self):
         return self.source
@@ -98,24 +100,25 @@ class MemLink(): # TODO implement this in
             
 class MemGroup(BackendGroup):
     
-    def __init__(self, parent, name, attrs, *args, **kwargs):
+    def __init__(self, parent, name, attrs={}, path_split="/", *args, **kwargs):
         super(MemGroup, self).__init__(parent, name, attrs)
+
         self.parent = parent
-        self.links = {}
+        self.path_split = path_split
+        self.connection = parent.connection
+
         self.attrs = attrs
+        self.links = {}
         self.datasets = {}
-        self.connection = self.get_connection() # TODO is this necessary?
-        self.absolute_path = self.get_absolute_path() # TODO too much recursion?
-        #self.path_split = TODO
-        
+
+    """
     def get_connection(self):
-        """
         Recursively access the parent groups until the parent group is the
         root group which is "/", then get the parent name of the root group
         which is the name of the connection.
         
         :return name of the DosNa connection
-        """
+
         def find_connection(group):
             if group.name == "/":
                 return group.parent.name
@@ -123,7 +126,7 @@ class MemGroup(BackendGroup):
                 return find_connection(group.parent)
             
         return find_connection(self)
-    
+    """
     def get_absolute_path(self):
         """
         Recursively access the parent groups until the parent name is the root group "/"
@@ -143,7 +146,7 @@ class MemGroup(BackendGroup):
         
         full_path_list = find_path(self)
         full_path_list.reverse()
-        full_path = "/" + '/'.join(full_path_list)
+        full_path = "/" + self.path_split.join(full_path_list)
         return full_path
     
     def keys(self):
@@ -170,7 +173,7 @@ class MemGroup(BackendGroup):
             items[value.name] = value.target
         return items
     
-    def create_group(self, path, attrs=None):
+    def create_group(self, path, attrs={}):
         """
         Creates a new empty group.
         Validates the path is alphanumeric.
@@ -179,6 +182,33 @@ class MemGroup(BackendGroup):
         is the name of the group.
         :param string that provides an absolute path or a relative path to the new group
         :return new group
+        """
+        if '/' in path:
+            path_elements = path.split('/')
+            print(path_elements)
+            def recurse(path, group):
+                subgroup = MemGroup(group, path[0])
+                link = MemLink(group, subgroup, path[0])
+                group.links[path[0]] = link
+                path.pop(0)
+                if len(path) == 0:
+                    return False
+                recurse(path, subgroup)
+
+
+            recurse(path_elements, self)
+            print(self.links)
+
+        #if not path.isalnum():
+        #    raise Exception("String ", path, "is not alphanumeric")
+
+        elif path in self.links:
+            raise Exception("Group", path, "already exists")
+        else:
+            group = MemGroup(self, path, attrs)
+            link = MemLink(self, group, path)
+            self.links[path] = link
+            return group
         """
         if not path.isalnum():
             raise Exception("String ", path, "is not alphanumeric")
@@ -189,6 +219,7 @@ class MemGroup(BackendGroup):
             link = MemLink(self, group, path)
             self.links[path] = link
             return group
+        """
             
         
     def get_group(self, path):
@@ -201,23 +232,33 @@ class MemGroup(BackendGroup):
         :param string that provides an absolute path or a relative path to the new group
         :return DosNa group
         """
-        def _recurse(arr, links):
-            if arr[0] in links:
-                link_target = links.get(arr[0]).target
-                if len(arr) > 1:
-                    arr.pop(0)
-                    return _recurse(arr, link_target.links)
+
+        def _recurse(path, links):
+            first_element = path[0]
+            if first_element in links:
+                object = links.get(first_element).target
+                if len(path) > 1:
+                    path.pop(0)
+                    return _recurse(path, object.links)
                 else:
-                    return link_target
-        
-        path_elements = path.split("/") # TODO change this
-        group = _recurse(path_elements, self.links)
-        
+                    if hasattr(object, 'links'):
+                        return object
+
+        path_elements = path.split(self.path_split)
+        if path.startswith("/"):
+            path_elements.pop(0)
+            links = self.connection.root_group.get_links()
+        else:
+            links = self.links
+
+        group = _recurse(path_elements, links)
+
         if group is None:
-            raise GroupNotFoundError("Group ", path, "does not exist")
-        return group
+            raise GroupNotFoundError("Group", path, "not found")
+        else:
+            return group
     
-    def has_group(self, path): # TODO: get group
+    def has_group(self, path):
         """
         Splits the path string for each slash found.
         For each element in the resulting array, it checks recursively whether the first element
@@ -225,7 +266,7 @@ class MemGroup(BackendGroup):
         performs the same process with the next element of the array and the next group links.
         """
         if self.get_group(path):
-            True
+            return True
         else:
             raise GroupNotFoundError("Group", path, "does not exist")
         
@@ -237,20 +278,21 @@ class MemGroup(BackendGroup):
         if not self.has_group(path):
             raise GroupNotFoundError("Group", path, "does not exist")
 
-        def _recurse(arr, links):
-            if arr[0] in links:
-                link_target = links.get(arr[0]).target
+        def _recurse(path, links):
+            if path[0] in links:
+                subgroup = links.get(path[0]).target
                 log.debug("Removing Group", path)
-                if len(arr) > 1:
-                    arr.pop(0)
-                    return _recurse(arr, link_target.links)
+                if len(path) > 1:
+                    path.pop(0)
+                    return _recurse(path, subgroup.links)
                 else:
-                    del links[arr[0]]
+                    del subgroup
+                    del links[path[0]]
         
-        arr = path.split("/")
-        _recurse(arr, self.links)
+        path_elements = path.split(self.path_split)
+        _recurse(path_elements, self.links)
         
-    def get_all_groups(self): # TODO docstring
+    def visit_groups(self):
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups and subgroups of this group
@@ -260,14 +302,13 @@ class MemGroup(BackendGroup):
             for key, value in links.items():
                 subgroup = value.target
                 if hasattr(subgroup, "links"):
-                    #groups.append(key)
-                    groups.append(subgroup.absolute_path)
+                    groups.append(subgroup.get_absolute_path())
                     groups += _recurse(subgroup.links)
             return groups
         
         return _recurse(self.links)
     
-    def get_all_objects(self): # TODO visit datasets not absolute path
+    def visit_objects(self):
         """
         Recursively visit all objects in this group and subgroups
         :return all objects names of the groups, subgroups and datasets of this group
@@ -276,13 +317,42 @@ class MemGroup(BackendGroup):
         def _recurse(links):
             objects = []
             for key, value in links.items():
-                objects.append(key)
+                objects.append(value.target.get_absolute_path())
                 if hasattr(value.target, "links"):
                     objects += _recurse(value.target.links)
             return objects
         
         return _recurse(self.links)
-    
+    """
+    def get_object(self, path):
+        Splits the path string for each slash found.
+        For each element in the resulting array, it checks recursively whether the first element
+        of the array is in the dictionary of links. If it is, it pops the the first element and
+        performs the same process with the next element of the array and the next group links.
+
+        :param string that provides an absolute path or a relative path to the new group
+        :return DosNa group
+        if path.startswith("/"):  
+            raise GroupNotFoundError("Group ", path, "does not exist")
+
+        def _recurse(path, links):
+            first_element = path[0]
+            if first_element in links:
+                object = links.get(first_element).target
+                if len(path) > 1:
+                    path.pop(0)
+                    return _recurse(path, object.links)
+                else:
+                    return object
+
+        path_elements = path.split(self.path_split)
+        object = _recurse(path_elements, self.links)
+        if object is None:
+            raise GroupNotFoundError("Group", path, "not found")
+        else:
+            return object
+    """
+
     def get_links(self):
         return self.links
         
@@ -294,8 +364,12 @@ class MemGroup(BackendGroup):
         fillvalue=0,
         data=None,
         chunk_size=None,
+        uuid=False
     ):
-
+        """
+        if uuid:
+            name = name = name + "-" + str(uuid.uuid4())
+        """
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception("Provide `shape` and `dtype` or `data`")
         if self.has_dataset(name):
@@ -334,26 +408,33 @@ class MemGroup(BackendGroup):
             raise DatasetNotFoundError("Dataset `%s` does not exist")
         log.debug("Removing Dataset `%s`", name)
         del self.datasets[name]
-    
+
+    def add_metadata(self, attrs):
+        self.attrs.update(attrs)
+        return self.attrs
+
     def get_metadata(self):
-        return self.metadata
+        return self.attrs
     
     def has_metadata(self):
-        if metadata:
-            return self.metadata
+        if self.attrs:
+            return self.attrs
     
     def del_metadata(self):
-        return self.metadata
+        self.attrs.clear()
         
     
 class MemDataset(BackendDataset):
 
     def __init__(self, pool, name, shape, dtype, fillvalue, chunk_grid,
-                 chunk_size):
+                 chunk_size, path_split="/"):
         super(MemDataset, self).__init__(pool, name, shape, dtype, fillvalue,
                                          chunk_grid, chunk_size)
         self.data_chunks = {}
         self._populate_chunks()
+
+        self.parent = pool
+        self.path_split = path_split
 
     def _populate_chunks(self):
         for idx in np.ndindex(*self.chunk_grid):
@@ -388,6 +469,28 @@ class MemDataset(BackendDataset):
             del self.data_chunks[idx]
             return True
         return False
+
+    def get_absolute_path(self):
+        """
+        Recursively access the parent groups until the parent name is the root group "/"
+        and append the name of the parent groups to obtain the full path from the root group.
+
+        :return absolute path name from the root group
+        """
+
+        def find_path(group):
+            full_path = []
+            if group.name == "/":
+                return full_path
+            else:
+                full_path.append(group.name)
+                full_path += find_path(group.parent)
+            return full_path
+
+        full_path_list = find_path(self)
+        full_path_list.reverse()
+        full_path = "/" + self.path_split.join(full_path_list)
+        return full_path
 
 
 class MemDataChunk(BackendDataChunk):
