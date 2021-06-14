@@ -55,7 +55,7 @@ class BackendConnection(object):
     def __contains__(self, name):
         return self.has_dataset(name)
     
-    def create_group(self, parent, name, attrs={}):
+    def create_group(self, name, attrs={}):
         raise NotImplementedError('`create_group` not implemented '
                                   'for this backend')
     def get_group(self):
@@ -89,14 +89,17 @@ class BackendConnection(object):
 class BackendGroup(object):
     
     def __init__(self, parent, name, attrs, *args, **kwargs):
-
         self._parent = parent
         self._name = name
         self._attrs = attrs
-    
+
     @property
     def name(self):
         return self._name
+
+    @property
+    def parent(self):
+        return self._parent
     
     def __getitem__(self, name):     #TODO: get dataset and group
         return self.get_dataset(name)
@@ -160,8 +163,10 @@ class BackendDataset(object):
 
     def __init__(self, connection, name, shape, dtype, fillvalue, chunk_grid,
                  chunk_size):
-        if not connection.has_dataset(name):
-            raise Exception('Wrong initialization of a Dataset')
+
+# TODO removed for now
+        #if not connection.has_dataset(name):
+        #    raise Exception('Wrong initialization of a Dataset')
 
         self._connection = connection
         self._name = name

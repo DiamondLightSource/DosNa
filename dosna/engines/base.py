@@ -33,18 +33,20 @@ class BackendWrapper(object):
 
 class EngineConnection(BackendWrapper):
     
-    def create_group(self, parent, name, attrs={}):
-        group = self.instance.create_group(parent, name, attrs)
+    def create_group(self, name, attrs={}):
+        group = self.instance.create_group(name, attrs)
         return group
     
-    def get_group(self, name):
+    def get_group(self, name): # TODO
+        """
         group = self.instance.get_group(name)
         return group
+        """
+        raise NotImplemented('get_group not implemented for this engine')
 
     def get_object(self, name):
-        group = self.instance.get_object(name)
-        print(group)
-        return group
+        object = self.instance.get_object(name)
+        return object
     
     def del_group(self, name):
         group = self.get_group(name)
@@ -69,22 +71,21 @@ class EngineConnection(BackendWrapper):
         dataset.clear()
         self.instance.del_dataset(name)
 
-    def __getitem__(self, group_name):
-        return self.get_group(group_name)
+    def __getitem__(self, object_name):
+        return self.get_object(object_name)
     
 class EngineGroup(BackendWrapper):
     
-    def create_group(self, parent, name, attrs={}):
-        self.instance.create_group(parent, name, attrs={})
+    def create_group(self, name, attrs={}):
+        self.instance.create_group(name, attrs={})
         group = self.get_group(name)
         return group
         
     def get_group(self, name):
-        group = self.get_group(name)
-        return group
-        """
+        #group = self.get_group(name)
+        #return group
         raise NotImplemented('get_group not implemented for this engine')
-        """
+
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
@@ -109,8 +110,12 @@ class EngineGroup(BackendWrapper):
         dataset.clear()
         self.instance.del_dataset(name)
 
-    def __getitem__(self, group_name):
-        return self.get_group(group_name)
+    def get_object(self, name): # TODO
+        object = self.get_object(name)
+        return object
+
+    def __getitem__(self, name):
+        return self.get_object(name)
     
 class EngineLink(BackendWrapper):
     

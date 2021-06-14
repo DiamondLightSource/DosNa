@@ -33,6 +33,8 @@ class CpuConnection(EngineConnection):
         return engine_dataset
     
     def get_group(self, name):
+        print(self)
+        print(name)
         group = self.instance.get_group(name)
         return CpuGroup(group)
 
@@ -40,6 +42,19 @@ class CpuConnection(EngineConnection):
         group = self.instance.create_group(name,attrs)
         engine_group = CpuGroup(group)
         return engine_group
+
+    def get_object(self, name):
+
+        try:
+            group = self.instance.get_group(name)
+            return CpuGroup(group)
+        except:
+            pass
+        try:
+            dataset = self.instance.get_dataset(name)
+            return CpuDataset(dataset)
+        except:
+            pass
 
 
     
@@ -68,10 +83,18 @@ class CpuGroup(EngineGroup):
         return CpuDataset(dataset)
 
     def get_object(self, name):
-        object = self.instance.get_object(name)
-        # TODO differentiate group from dataset
-        return object
-    
+        try:
+            group = self.instance.get_group(name)
+            return CpuGroup(group)
+        except:
+            pass
+        try:
+            dataset = self.instance.get_dataset(name)
+            return CpuDataset(dataset)
+        except:
+            pass
+
+
 class CpuLink(EngineLink):
     
     def get_source(self):
