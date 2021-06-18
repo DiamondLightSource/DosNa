@@ -22,8 +22,7 @@ class MemConnection(BackendConnection):
         self.connection = self
         self.root_group = MemGroup(self, "/", attrs={})
         self.datasets = {}
-
-    # Group methods
+        self.attrs = {}
 
     def keys(self):
         return self.root_group.keys()
@@ -52,11 +51,8 @@ class MemConnection(BackendConnection):
     def get_object(self, path):
         return self.root_group.get_object(path)
 
-    # TODO what to do with this
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None, uuid=False):
-
-        # TODO if uuid: name = name = name + "-" + str(uuid.uuid4())
 
         if not ((shape is not None and dtype is not None) or data is not None):
             raise Exception("Provide `shape` and `dtype` or `data`")
@@ -109,9 +105,6 @@ class MemConnection(BackendConnection):
     def visit_objects(self):
         return self.root_group.visit_objects()
 
-    # TODO check all methods by group
-
-
 class MemLink(BackendLink):
     def __init__(self, source, target, name):
         super(MemLink, self).__init__(source, target, name)
@@ -124,7 +117,6 @@ class MemLink(BackendLink):
 
     def get_name(self):
         return self.name
-
 
 class MemGroup(BackendGroup):
     def __init__(self, parent, name, attrs={}, path_split="/", *args, **kwargs):
@@ -171,8 +163,6 @@ class MemGroup(BackendGroup):
 
     def create_group(self, path, attrs={}):
 
-        # TODO check this is working
-
         def _create_subgroups(path, group):
             subgroup = MemGroup(group, path[0])
             link = MemLink(group, subgroup, path[0])
@@ -185,8 +175,8 @@ class MemGroup(BackendGroup):
         if path in self.links:
             raise Exception("Group", path, "already exists")
 
-        elif "/" in path:
-            path_elements = path.split("/")
+        elif self.path_split in path:
+            path_elements = path.split(self.path_split)
             _create_subgroups(path_elements, self)
 
         else:
@@ -314,7 +304,6 @@ class MemGroup(BackendGroup):
     def del_metadata(self):
         self.attrs.clear()
 
-    # TODO old implementation of dataset
     def create_dataset(self,name,shape=None,dtype=np.float32,fillvalue=0,
                        data=None,chunk_size=None,uuid=False,):
 
@@ -442,7 +431,6 @@ class MemDataset(BackendDataset):
             return True
         return False
 
-    # TODO this
     def get_absolute_path(self):
 
         def find_path(group):
@@ -458,7 +446,6 @@ class MemDataset(BackendDataset):
         full_path_list.reverse()
         full_path = "/" + self.path_split.join(full_path_list)
         return full_path
-
 
 class MemDataChunk(BackendDataChunk):
     def __init__(self, dataset, idx, name, shape, dtype, fillvalue):
