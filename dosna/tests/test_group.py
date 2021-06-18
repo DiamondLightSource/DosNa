@@ -59,11 +59,6 @@ class DatasetTest(unittest.TestCase):
             self.connection_handle.create_group(group_name)
         self.connection_handle.del_group(group_name)
 
-    def test_create_group_not_alphanumeric(self):
-        group_name = "/NotAlphanumeric?"
-        with self.assertRaises(Exception):
-            self.connection_handle.create_group(group_name)
-
     def test_del_group_create_same_group(self):
         self.connection_handle.del_group(self.fake_group)
         self.assertIsNotNone(self.connection_handle.create_group(self.fake_group))

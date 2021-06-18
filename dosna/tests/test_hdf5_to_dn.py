@@ -102,7 +102,7 @@ class Hdf5todosnaTest(unittest.TestCase):
         h5_file = h5py.File(H5FILE_NAME)
         self.assertEqual(set(h5_file.keys()), set(self.connection_handle.root_group.keys()))
         self.assertEqual(set(h5_file['A'].keys()), set(self.connection_handle['A'].keys()))
-        #self.assertCountEqual(list(h5_file['A/B'].keys()), self.connection_handle['A/B'].keys())         # TODO dataset names are not the same
+        #self.assertCountEqual(list(h5_file['A/B'].keys()), self.connection_handle['A/B'].keys())
         self.assertEqual(set(h5_file['A/C'].keys()), set(self.connection_handle['A/C'].keys()))
         h5_file.close()
 
@@ -129,14 +129,13 @@ class Hdf5todosnaTest(unittest.TestCase):
 
         self.assertEqual(h5_dset.shape, dn_dset.shape)
         self.assertEqual(h5_dset.dtype, dn_dset.dtype)
-        #self.assertEqual(h5_dset.chunks, dn_dset.chunk_size) # TODO case if hdf5 is not chunked
+        #self.assertEqual(h5_dset.chunks, dn_dset.chunk_size)
 
         h5_file.close()
 
     def test_same_datachunks(self):
         hdf5dict = self.hdftodn.hdf5_to_dict()
         self.hdftodn.hdf5dict_to_dosna(hdf5dict, self.connection_handle)
-        # TODO dset is not the same name because uuid
         dn_dset_name = ''.join(k for k in self.connection_handle["A/B"].keys() if k.startswith("dset2"))
         dn_dset = self.connection_handle["A/B"].get_dataset(dn_dset_name)
 
@@ -165,6 +164,7 @@ class Hdf5todosnaTest(unittest.TestCase):
         second_dosnadict = dntohdf.dosna_to_dict()
         dntohdf.dosnadict_to_hdf5(second_dosnadict, h5_filename)
         second_hdf5dict = dntohdf.hdf5file_to_hdf5dict(h5_filename)
+
         # TODO assert
 
 
