@@ -8,24 +8,17 @@ import uuid
 import h5py
 import json
 import numpy as np
-
-import dosna as dn
-from dosna.tools.hdf5todict import LazyHdfDict  # TODO: Create own methods?
-from dosna.backends import Backend
-from dosna.backends.base import (BackendConnection, BackendDataChunk,
-                                 BackendDataset, DatasetNotFoundError,
-                                 BackendGroup, GroupNotFoundError,
-)
-
 import multiprocessing
 from contextlib import contextmanager
 
+import dosna as dn
+from dosna.backends import Backend
+from dosna.backends.base import (BackendConnection, BackendDataChunk,
+                                 BackendDataset, DatasetNotFoundError,
+                                 BackendGroup, GroupNotFoundError)
 
-# TODO leave it, is copy?
 @contextmanager
 def hdf_file(hdf, *args, **kwargs):
-    """Context manager yields h5 file if hdf is str,
-    otherwise just yield hdf as is."""
     if isinstance(hdf, str):
         yield h5py.File(hdf, 'r',*args, **kwargs)
     else:
@@ -47,34 +40,48 @@ _DATASET_VALUE = 'dataset_value'
 _PATH_SPLIT = '/'
 _ABSOLUTE_PATH = 'absolute_path'
 
-_METADATA = 'metadata' # TODO maybe change this
+_METADATA = 'metadata'
 _ATTRS = 'attrs'
 
 class Hdf5todosna(object):
 
-    def __init__(self, h5file=None, max_num_mb=100, *args, **kwargs):
+    def __init__(self, h5file, dnconnection, max_num_mb=100, *args, **kwargs):
         self._h5file = h5file
-        self._size = max_num_mb # TODO change name
+        self._dnconnection = dnconnection
+        self._size = max_num_mb
 
     def hdf5_to_dict(self):
         def load(hdf):
+            root_group_lists = [] # TODO
             def _recurse(hdfobject, datadict):
+                for object in hdfobject.values():
+                    if type(object) == h5py.Group:
+                        root_group_lists.append(object.name)
                 for key, value in hdfobject.items():
                     if isinstance(value, h5py.Group):
-                        datadict[key] = LazyHdfDict() # TODO lazy HDf5fidct
+                        datadict[key] = dict()
                         attrs = dict()
                         for k, v in value.attrs.items():
                             attrs[k] = v
+                        """
+                        groups_list = []
+                        datasets_list = []
+                        for object in value.values():
+                            if type(object) == h5py.Group:
+                                groups_list.append(object.name)
+                            if type(object) == h5py.Dataset:
+                                datasets_list.append(object.name)
+                        attrs['Groups'] = groups_list
+                        attrs['Datasets'] = datasets_list
+                        """
                         datadict[key][_ATTRS] = attrs
                         datadict[key] = _recurse(value, datadict[key])
                     elif isinstance(value, h5py.Dataset):
-                        # if new:
-                        #    key = key + "-" + str(uuid.uuid4()) # TODO
                         datadict[key] = value
                 return datadict
 
             with hdf_file(hdf) as hdf:
-                data = LazyHdfDict(_h5file=hdf)
+                data = dict(_h5file=hdf)
                 return _recurse(hdf, data)
 
         hdf5dict = load(self._h5file)
@@ -83,7 +90,6 @@ class Hdf5todosna(object):
     def hdf5dict_to_dosna(self, hdf5dict, dosnaconnection):
 
         def _create_dataset(name, h5_dataset, group):
-            #print("DATASET SIZE", convert_size(h5_dataset.nbytes), h5_dataset.name) # TODO remove print
             if bytes_to_mb(h5_dataset.nbytes) < self._size:
                 data = np.zeros(h5_dataset.shape, dtype=h5_dataset.dtype)
                 h5_dataset.read_direct(data)
@@ -108,7 +114,7 @@ class Hdf5todosna(object):
 
         def _recurse(hdf5dict, dosnadict, group):
             for key, value in hdf5dict.items():
-                if isinstance(value, LazyHdfDict):
+                if isinstance(value, dict) and key != _ATTRS:
                     subgroup = group.create_group(key, value[_ATTRS])
                     dosnadict[key] = dict()
                     dosnadict[key][_ATTRS] = value[_ATTRS]
@@ -125,13 +131,13 @@ class Hdf5todosna(object):
     def hdf5dict_to_json(self, hdf5dict, jsonfile):
         def _recurse(hdf5dict, jsondict):
             for key, value in hdf5dict.items():
-                if isinstance(value, LazyHdfDict): # TODO change this
+                if isinstance(value, dict) and key != _ATTRS:
                     jsondict[key] = dict()
                     jsondict[key][_ATTRS] = value[_ATTRS]
                     jsondict[key] = _recurse(value, jsondict[key])
                 elif isinstance(value, h5py.Dataset):
                     jsondict[key] = dict()
-                    jsondict[key][_DATASET_NAME] = key  # TODO path = key.split("/") # TODO but if I am changing this, change everything
+                    jsondict[key][_DATASET_NAME] = key
                     jsondict[key][_SHAPE] = value.shape
                     jsondict[key][_CHUNK_SIZE] = value.chunks
                     jsondict[key][_NDIM] = value.ndim
