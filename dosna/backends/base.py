@@ -14,7 +14,6 @@ log = logging.getLogger(__name__)
 class BackendConnection(object):
 
     def __init__(self, name, open_mode="a", *args, **kwargs):
-        # TODO root_group
         self._name = name
         self._connected = False
         self._mode = open_mode
@@ -101,7 +100,7 @@ class BackendGroup(object):
     def parent(self):
         return self._parent
     
-    def __getitem__(self, name):     #TODO: get dataset and group
+    def __getitem__(self, name):
         return self.get_dataset(name)
 
     def __contains__(self, name):
@@ -164,7 +163,6 @@ class BackendDataset(object):
     def __init__(self, connection, name, shape, dtype, fillvalue, chunk_grid,
                  chunk_size):
 
-# TODO removed for now
         #if not connection.has_dataset(name):
         #    raise Exception('Wrong initialization of a Dataset')
 

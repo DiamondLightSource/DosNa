@@ -37,9 +37,9 @@ class EngineConnection(BackendWrapper):
         group = self.instance.create_group(name, attrs)
         return group
     
-    def get_group(self, name): # TODO
+    def get_group(self, name):
         """
-        group = self.instance.get_group(name)
+        group = self.instance.get_group(name) # TODO
         return group
         """
         raise NotImplemented('get_group not implemented for this engine')
@@ -49,7 +49,6 @@ class EngineConnection(BackendWrapper):
         return object
     
     def del_group(self, name):
-        group = self.get_group(name)
         self.instance.del_group(name)
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
@@ -110,7 +109,7 @@ class EngineGroup(BackendWrapper):
         dataset.clear()
         self.instance.del_dataset(name)
 
-    def get_object(self, name): # TODO
+    def get_object(self, name):
         object = self.get_object(name)
         return object
 

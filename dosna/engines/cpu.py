@@ -33,8 +33,6 @@ class CpuConnection(EngineConnection):
         return engine_dataset
     
     def get_group(self, name):
-        print(self)
-        print(name)
         group = self.instance.get_group(name)
         return CpuGroup(group)
 
