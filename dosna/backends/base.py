@@ -225,7 +225,7 @@ class BackendDataset(object):
                                 ' slices are supported'.format(type(slice_)))
 
         if squeeze:
-            return final_slices, squeeze_axis
+            return final_slices, tuple(squeeze_axis)
         return final_slices
 
     @staticmethod
