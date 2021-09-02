@@ -14,7 +14,7 @@ from dosna.util import dtype2str, shape2str, str2shape
 from dosna.util.data import slices2shape
 
 _SIGNATURE = "DosNa Dataset"
-
+_ENCODING = "utf-8"
 log = logging.getLogger(__name__)
 
 
@@ -75,14 +75,12 @@ class CephConnection(BackendConnection):
 
         log.debug('creating dataset %s with shape:%s chunk_size:%s '
                   'chunk_grid:%s', name, shape, chunk_size, chunk_grid)
-
-        self.ioctx.write(name, _SIGNATURE)
-        self.ioctx.set_xattr(name, 'shape', shape2str(shape))
-        self.ioctx.set_xattr(name, 'dtype', dtype2str(dtype))
-        self.ioctx.set_xattr(name, 'fillvalue', repr(fillvalue))
-        self.ioctx.set_xattr(name, 'chunk_grid', shape2str(chunk_grid))
-        self.ioctx.set_xattr(name, 'chunk_size', shape2str(chunk_size))
-
+        self.ioctx.write(name, _SIGNATURE.encode(_ENCODING))
+        self.ioctx.set_xattr(name, 'shape', shape2str(shape).encode(_ENCODING))
+        self.ioctx.set_xattr(name, 'dtype', dtype2str(dtype).encode(_ENCODING))
+        self.ioctx.set_xattr(name, 'fillvalue', repr(fillvalue).encode(_ENCODING))
+        self.ioctx.set_xattr(name, 'chunk_grid', shape2str(chunk_grid).encode(_ENCODING))
+        self.ioctx.set_xattr(name, 'chunk_size', shape2str(chunk_size).encode(_ENCODING))
         dataset = CephDataset(self, name, shape, dtype, fillvalue,
                               chunk_grid, chunk_size)
 
@@ -91,19 +89,19 @@ class CephConnection(BackendConnection):
     def get_dataset(self, name):
         if not self.has_dataset(name):
             raise DatasetNotFoundError('Dataset `%s` does not exist' % name)
-        shape = str2shape(self.ioctx.get_xattr(name, 'shape'))
-        dtype = self.ioctx.get_xattr(name, 'dtype')
-        fillvalue = int(self.ioctx.get_xattr(name, 'fillvalue'))
-        chunk_grid = str2shape(self.ioctx.get_xattr(name, 'chunk_grid'))
-        chunk_size = str2shape(self.ioctx.get_xattr(name, 'chunk_size'))
+        shape = str2shape(self.ioctx.get_xattr(name, 'shape').decode())
+        dtype = self.ioctx.get_xattr(name, 'dtype').decode()
+        fillvalue = int(self.ioctx.get_xattr(name, 'fillvalue').decode())
+        chunk_grid = str2shape(self.ioctx.get_xattr(name, 'chunk_grid').decode())
+        chunk_size = str2shape(self.ioctx.get_xattr(name, 'chunk_size').decode())
         dataset = CephDataset(self, name, shape, dtype, fillvalue,
                               chunk_grid, chunk_size)
         return dataset
 
     def has_dataset(self, name):
         try:
-            valid = self.ioctx.stat(name)[0] == len(_SIGNATURE) and \
-                self.ioctx.read(name) == _SIGNATURE
+            valid = self.ioctx.stat(name)[0] == len(_SIGNATURE.encode(_ENCODING)) and \
+                self.ioctx.read(name) == _SIGNATURE.encode(_ENCODING)
         except rados.ObjectNotFound:
             return False
         return valid
