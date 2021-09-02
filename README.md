@@ -60,7 +60,7 @@ Requirements:
  - Backends:
      + ram: none
      + hdf5: [h5py](http://docs.h5py.org/en/latest/quick.html)
-     + ceph: [librados](http://docs.ceph.com/docs/master/rados/api/librados-intro/#getting-librados-for-python)
+     + ceph: [librados](http://docs.ceph.com/docs/master/rados/api/librados-intro/#getting-librados-for-python)*
      + sage: [pyclovis](/dosna/support/pyclovis)
      + s3: [boto3](https://github.com/boto/boto3)
  - Engines:
@@ -70,7 +70,7 @@ Requirements:
  - Examples:
      + `convolutions.py`: [scipy](https://www.scipy.org/)
 
-
+\*Python3 required
 ### Installing from sources
 - Clone repository:
 
