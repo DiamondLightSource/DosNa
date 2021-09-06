@@ -16,7 +16,7 @@ from dosna.util.data import slices2shape
 
 _DATASET_ROOT = 'dataset_root'
 _SIGNATURE = "DosNa Dataset"
-
+_ENCODING = "utf-8"
 _SHAPE = 'shape'
 _DTYPE = 'dtype'
 _FILLVALUE = 'fillvalue'
@@ -116,7 +116,7 @@ class S3Connection(BackendConnection):
 
         self._client.put_object(
             Bucket=name, Key=_DATASET_ROOT,
-            Body=bytes(_SIGNATURE), Metadata=metadata
+            Body=_SIGNATURE.encode(_ENCODING), Metadata=metadata
         )
 
         dataset = S3Dataset(
@@ -160,7 +160,7 @@ class S3Connection(BackendConnection):
             )
 
             content = dataset_root['Body'].read()
-            if not content == _SIGNATURE:
+            if not content == _SIGNATURE.encode(_ENCODING):
                 dataset_root = None
 
         except Exception:
