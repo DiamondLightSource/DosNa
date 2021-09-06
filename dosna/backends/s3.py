@@ -259,7 +259,7 @@ class S3DataChunk(BackendDataChunk):
     def get_data(self, slices=None):
         if slices is None:
             slices = slice(None)
-        data = np.fromstring(self.read(), dtype=self.dtype, count=self.size)
+        data = np.frombuffer(self.read(), dtype=self.dtype, count=self.size).copy()
         data.shape = self.shape
         return data[slices]
 
