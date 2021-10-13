@@ -39,7 +39,7 @@ _DATASET_NAME = 'name'
 _DATASET_VALUE = 'dataset_value'
 _PATH_SPLIT = '/'
 _ABSOLUTE_PATH = 'absolute_path'
-
+_FILLVALUE = 'fillvalue'
 _METADATA = 'metadata'
 _ATTRS = 'attrs'
 
@@ -132,14 +132,13 @@ class Hdf5todosna(object):
                     jsondict[key][_NBYTES] = value.nbytes.item()
                     jsondict[key][_IS_DATASET] = True
                     jsondict[key][_ABSOLUTE_PATH] = value.name
-                    if bytes_to_mb(value.nbytes) < self._size:
-                        data = np.zeros(value.shape, value.dtype)
-                        value.read_direct(data)
-                        jsondict[key][_DATASET_VALUE] = data.tolist()
-
+                    jsondict[key][_FILLVALUE] = float(value.fillvalue)
+                    data = np.zeros(value.shape, value.dtype)
+                    value.read_direct(data)
+                    jsondict[key][_DATASET_VALUE] = data.tolist()
             return jsondict
 
-        jsondict = _recurse(hdf_dict, {})
+        jsondict = _recurse(hdfdict, {})
 
         def json_encoder(obj):
             if isinstance(obj, np.ndarray):
