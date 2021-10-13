@@ -77,16 +77,6 @@ class MemConnection(BackendConnection):
 
         return dataset
 
-    def get_dataset(self, path):
-        return self.root_group.get_dataset(path)
-
-    def has_dataset(self, path):
-        return self.root_group.has_dataset(path)
-
-    def del_dataset(self, path):
-        return self.root_group.del_dataset(path)
-
-    """
     def get_dataset(self, name):
         if not self.has_dataset(name):
             raise DatasetNotFoundError("Dataset `%s` does not exist" % name)
@@ -100,7 +90,7 @@ class MemConnection(BackendConnection):
             raise DatasetNotFoundError("Dataset `%s` does not exist" % name)
         log.debug("Removing Dataset `%s`", name)
         del self.datasets[name]
-    """
+
 
     def visit_objects(self):
         return self.root_group.visit_objects()
@@ -356,20 +346,6 @@ class MemGroup(BackendGroup):
             raise GroupNotFoundError("Group", path, "not found")
         else:
             return group
-
-    def has_dataset(self, path):
-        if self.get_dataset(path):
-            return True
-        else:
-            raise GroupNotFoundError("Group", path, "does not exist")
-    """
-
-    def get_dataset(self, name):
-        if not self.has_dataset(name):
-            raise DatasetNotFoundError("Dataset `%s` does not exist")
-        return self.datasets[name]
-    """
-
 
     def has_dataset(self, name):
         return name in self.datasets
