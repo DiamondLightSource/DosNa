@@ -18,7 +18,7 @@ from dosna.backends.base import (BackendConnection, BackendDataChunk,
                                  BackendGroup, GroupNotFoundError)
 
 @contextmanager
-def hdf_file(hdf, *args, **kwargs):
+def read_hdf_file(hdf, *args, **kwargs):
     if isinstance(hdf, str):
         yield h5py.File(hdf, 'r',*args, **kwargs)
     else:
@@ -45,12 +45,10 @@ _ATTRS = 'attrs'
 
 class Hdf5todosna(object):
 
-    def __init__(self, h5file, dnconnection, max_num_mb=100, *args, **kwargs):
-        self._h5file = h5file
-        self._dnconnection = dnconnection
+    def __init__(self, max_num_mb=100, *args, **kwargs):
         self._size = max_num_mb
 
-    def hdf5_to_dict(self):
+    def hdf5_to_dict(self, hdf_file):
         def load(hdf):
             root_group_lists = [] # TODO
             def _recurse(hdfobject, datadict):
@@ -63,32 +61,21 @@ class Hdf5todosna(object):
                         attrs = dict()
                         for k, v in value.attrs.items():
                             attrs[k] = v
-                        """
-                        groups_list = []
-                        datasets_list = []
-                        for object in value.values():
-                            if type(object) == h5py.Group:
-                                groups_list.append(object.name)
-                            if type(object) == h5py.Dataset:
-                                datasets_list.append(object.name)
-                        attrs['Groups'] = groups_list
-                        attrs['Datasets'] = datasets_list
-                        """
                         datadict[key][_ATTRS] = attrs
                         datadict[key] = _recurse(value, datadict[key])
                     elif isinstance(value, h5py.Dataset):
                         datadict[key] = value
                 return datadict
 
-            with hdf_file(hdf) as hdf:
+            with read_hdf_file(hdf) as hdf:
                 data = dict(_h5file=hdf)
                 return _recurse(hdf, data)
 
-        hdf5dict = load(self._h5file)
+        hdf5dict = load(hdf_file)
         return hdf5dict
 
-    def hdf5dict_to_dosna(self, hdf5dict, dosnaconnection):
-
+    def hdf5_to_dosna(self, hdf_file, dosnaconnection):
+        hdf_dict = self.hdf5_to_dict(hdf_file)
         def _create_dataset(name, h5_dataset, group):
             if bytes_to_mb(h5_dataset.nbytes) < self._size:
                 data = np.zeros(h5_dataset.shape, dtype=h5_dataset.dtype)
@@ -125,10 +112,11 @@ class Hdf5todosna(object):
                         dosnadict[key] = dosna_dataset
             return dosnadict
 
-        dosnadict = _recurse(hdf5dict, {}, dosnaconnection)
+        dosnadict = _recurse(hdf_dict, {}, dosnaconnection)
         return dosnadict
 
-    def hdf5dict_to_json(self, hdf5dict, jsonfile):
+    def hdf5dict_to_json(self, hdf_file, jsonfile):
+        hdf_dict = self.hdf5_to_dict(hdf_file)
         def _recurse(hdf5dict, jsondict):
             for key, value in hdf5dict.items():
                 if isinstance(value, dict) and key != _ATTRS:
@@ -152,7 +140,7 @@ class Hdf5todosna(object):
 
             return jsondict
 
-        jsondict = _recurse(hdf5dict, {})
+        jsondict = _recurse(hdf_dict, {})
 
         def json_encoder(obj):
             if isinstance(obj, np.ndarray):
