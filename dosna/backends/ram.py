@@ -232,10 +232,11 @@ class MemGroup(BackendGroup):
             return object
 
     def has_group(self, path):
-        if self.get_group(path):
-            return True
-        else:
-            raise GroupNotFoundError('Group', path, 'does not exist.')
+        try:
+            valid = self.get_group(path)
+        except GroupNotFoundError:
+            return False
+        return valid
 
     def del_group(self, path):
         if not self.has_group(path):

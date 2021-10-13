@@ -84,8 +84,7 @@ class DatasetTest(unittest.TestCase):
         self.assertEqual({'Key1': 'Value1', 'Key2': 'Value2'}, self.group.get_metadata())
 
     def test_not_existing_group(self):
-        with self.assertRaises(GroupNotFoundError):
-            self.connection_handle.has_group('NonExistingGroup')
+        self.assertFalse(self.connection_handle.has_group('NonExistingGroup'))
 
     def test_del_non_existing_group(self):
         with self.assertRaises(GroupNotFoundError):
