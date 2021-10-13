@@ -43,7 +43,7 @@ _FILLVALUE = 'fillvalue'
 _METADATA = 'metadata'
 _ATTRS = 'attrs'
 
-class Hdf5todosna(object):
+class HdfConverter(object):
 
     def __init__(self, max_num_mb=100, *args, **kwargs):
         self._size = max_num_mb
