@@ -74,46 +74,44 @@ class Hdf5todosna(object):
         hdf5dict = load(hdf_file)
         return hdf5dict
 
-    def hdf5_to_dosna(self, hdf_file, dosnaconnection):
-        hdf_dict = self.hdf5_to_dict(hdf_file)
+    def hdf2dosna(self, hdf_file, dn_connection):
+        hdf_dict = self.hdf2dict(hdf_file)
+
         def _create_dataset(name, h5_dataset, group):
-            if bytes_to_mb(h5_dataset.nbytes) < self._size:
-                data = np.zeros(h5_dataset.shape, dtype=h5_dataset.dtype)
-                h5_dataset.read_direct(data)
-                dosna_dataset = group.create_dataset(
-                    name,
-                    data = data,
-                )
+            if h5_dataset.chunks is None:
+                if bytes_to_mb(h5_dataset.nbytes) < self._size:
+                    data = np.zeros(h5_dataset.shape, dtype=h5_dataset.dtype)
+                    h5_dataset.read_direct(data)
+                    dosna_dataset = group.create_dataset(
+                        name,
+                        data=data,
+                    )
+                else:
+                    raise Exception('Dataset size bigger than`{}` MB and is not chunked'.format(self._size))
             else:
                 dosna_dataset = group.create_dataset(
                     name,
-                    shape= h5_dataset.shape,
+                    shape=h5_dataset.shape,
                     dtype=h5_dataset.dtype,
                     chunk_size=h5_dataset.chunks,
                 )
-                if h5_dataset.chunks is not None:
-                    for chunk in h5_dataset.iter_chunks():
-                        dosna_dataset[chunk] = h5_dataset[chunk]
-                else:
-                    raise Exception('Dataset size bigger than`{}` MB and is not chunked'.format(self._size))
+                for chunk in h5_dataset.iter_chunks():
+                    dosna_dataset[chunk] = h5_dataset[chunk]
 
             return dosna_dataset
 
-        def _recurse(hdf5dict, dosnadict, group):
+        def _recurse(hdf5dict, group):
             for key, value in hdf5dict.items():
                 if isinstance(value, dict) and key != _ATTRS:
                     subgroup = group.create_group(key, value[_ATTRS])
-                    dosnadict[key] = dict()
-                    dosnadict[key][_ATTRS] = value[_ATTRS]
-                    dosnadict[key] = _recurse(value, dosnadict[key], subgroup)
+                    _recurse(value, subgroup)
                 else:
                     if isinstance(value, h5py.Dataset):
-                        dosna_dataset = _create_dataset(key, value, group)
-                        dosnadict[key] = dosna_dataset
-            return dosnadict
+                        _create_dataset(key, value, group)
+            return group
 
-        dosnadict = _recurse(hdf_dict, {}, dosnaconnection)
-        return dosnadict
+        dn_connection = _recurse(hdf_dict, dn_connection)
+        return dn_connection
 
     def hdf5dict_to_json(self, hdf_file, jsonfile):
         hdf_dict = self.hdf5_to_dict(hdf_file)
