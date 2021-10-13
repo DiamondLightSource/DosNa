@@ -48,9 +48,9 @@ class Hdf5todosna(object):
     def __init__(self, max_num_mb=100, *args, **kwargs):
         self._size = max_num_mb
 
-    def hdf5_to_dict(self, hdf_file):
+    def hdf2dict(self, hdf_file):
         def load(hdf):
-            root_group_lists = [] # TODO
+            root_group_lists = []
             def _recurse(hdfobject, datadict):
                 for object in hdfobject.values():
                     if type(object) == h5py.Group:
@@ -71,8 +71,8 @@ class Hdf5todosna(object):
                 data = dict(_h5file=hdf)
                 return _recurse(hdf, data)
 
-        hdf5dict = load(hdf_file)
-        return hdf5dict
+        hdfdict = load(hdf_file)
+        return hdfdict
 
     def hdf2dosna(self, hdf_file, dn_connection):
         hdf_dict = self.hdf2dict(hdf_file)
