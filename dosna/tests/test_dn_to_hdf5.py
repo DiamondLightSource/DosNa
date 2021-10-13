@@ -1,7 +1,7 @@
 import logging
 import sys
 import unittest
-
+import os
 import h5py
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -25,7 +25,7 @@ DATA_CHUNK_SIZE = (32, 32, 32)
 SEQUENTIAL_TEST_PARTS = 3
 DATASET_NUMBER_RANGE = (-10000, 10000)
 
-H5FILE_NAME = 'testunitfile.h5'
+H5FILE_NAME = 'test_unit_file.h5'
 DATASET_NAME = 'fakedataset'
 
 
@@ -71,8 +71,9 @@ class Hdf5todosnaTest(unittest.TestCase):
         group_A.del_group('C')
         group_A.del_group('B')
         self.connection_handle.del_group('A')
-
         self.connection_handle.disconnect()
+        if os.path.isfile(H5FILE_NAME):
+            os.remove(H5FILE_NAME)
 
     def test_same_keys(self):
         dosnadict = self.dntohdf.dosna_to_dict()
@@ -81,6 +82,7 @@ class Hdf5todosnaTest(unittest.TestCase):
         self.assertEqual(set(h5_file.keys()), set(self.connection_handle.root_group.keys()))
         self.assertEqual(set(h5_file['A'].keys()), set(self.connection_handle['A'].keys()))
         self.assertEqual(set(h5_file['A/B'].keys()), set(self.connection_handle['A/B'].keys()))
+        self.assertEqual(set(h5_file['A/B/D'].keys()), set(self.connection_handle['A/B/D'].keys()))
         self.assertEqual(set(h5_file['A/C'].keys()), set(self.connection_handle['A/C'].keys()))
         h5_file.close()
 
@@ -90,8 +92,9 @@ class Hdf5todosnaTest(unittest.TestCase):
         h5_file = h5py.File(H5FILE_NAME)
 
         dn_attributes = self.connection_handle['A'].attrs
-        h5_attributes = dict(attr for attr in h5_file['A'].attrs.items())
+        h5_attributes = h5_file['A'].attrs
         self.assertEqual(dn_attributes, h5_attributes)
+
         h5_file.close()
 
     def test_same_dataset_attrs(self):
@@ -104,6 +107,8 @@ class Hdf5todosnaTest(unittest.TestCase):
         self.assertEqual(h5_dset.shape, dn_dset.shape)
         self.assertEqual(h5_dset.dtype, dn_dset.dtype)
         self.assertEqual(h5_dset.chunks, dn_dset.chunk_size)
+        for hdf, dns in zip(h5_dset, dn_dset):
+            assert_array_equal(hdf, dns)
 
     def test_same_dataset_chunks(self):
         dn_dset = self.connection_handle["A/B"].get_dataset("dset2")
@@ -113,7 +118,6 @@ class Hdf5todosnaTest(unittest.TestCase):
 
         h5_file = h5py.File(H5FILE_NAME)
         h5_dset = h5_file["/A/B/dset2"]
-
         for chunk in h5_dset.iter_chunks():
             assert_array_equal(dn_dset[chunk], h5_dset[chunk])
 
@@ -122,11 +126,35 @@ class Hdf5todosnaTest(unittest.TestCase):
         self.dntohdf.dosnadict_to_hdf5(dosnadict, H5FILE_NAME)
 
         new_connection = dn.Connection('test_second_connection')
-        hdftodn = Hdf5todosna(H5FILE_NAME)
-        hdfdict = hdftodn.hdf5_to_dict()
+        hdftodn = Hdf5todosna(H5FILE_NAME, new_connection)
+        hdfdict = hdftodn.hdf2dict()
         second_dosnadict = hdftodn.hdf5dict_to_dosna(hdfdict, new_connection)
+        print(dosnadict)
+        print(second_dosnadict)
+        # Keys Check
+        self.assertEqual(set(dosnadict.keys()), set(second_dosnadict.keys()))
+        self.assertEqual(set(dosnadict['A'].keys()), set(second_dosnadict['A'].keys()))
+        self.assertEqual(set(dosnadict['A']['B'].keys()), set(second_dosnadict['A']['B'].keys()))
+        self.assertEqual(set(dosnadict['A']['B']['D'].keys()), set(second_dosnadict['A']['B']['D'].keys()))
+        self.assertEqual(set(dosnadict['A']['C'].keys()), set(second_dosnadict['A']['C'].keys()))
 
-
+        # Attributes Check
+        self.assertEqual((dosnadict['A']['attrs']), (second_dosnadict['A']['attrs']))
+        self.assertEqual((dosnadict['A']['B']['attrs']), (second_dosnadict['A']['B']['attrs']))
+        self.assertEqual((dosnadict['A']['B']['D']['attrs']), (second_dosnadict['A']['B']['D']['attrs']))
+        self.assertEqual((dosnadict['A']['C']['attrs']), (second_dosnadict['A']['C']['attrs']))
+        # self.assertDictEqual(dosnadict,second_dosnadict)
+        # Data Check
+        dosnadict_dset1 = dosnadict['A']['B']['dset1']
+        second_dosnadict_dset1 = second_dosnadict['A']['B']['dset1']
+        for dn_d1, s_dn_d1 in zip(dosnadict_dset1, second_dosnadict_dset1):
+            np.testing.assert_array_equal(dn_d1, s_dn_d1)
+        dosnadict_dset2 = dosnadict['A']['B']['dset2']
+        second_dosnadict_dset2 = second_dosnadict['A']['B']['dset2']
+        for dn_d2, s_dn_d2 in zip(dosnadict_dset2, second_dosnadict_dset2):
+            np.testing.assert_array_equal(dn_d2, s_dn_d2)
+        # print("DOSNA DICT:")
+        # print(dosnadict)
 
 def main():
     configure_logger(log)
