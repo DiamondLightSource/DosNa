@@ -1,6 +1,7 @@
 import logging
 import sys
 import unittest
+import os
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -25,10 +26,9 @@ DATA_CHUNK_SIZE = (32, 32, 32)
 SEQUENTIAL_TEST_PARTS = 3
 DATASET_NUMBER_RANGE = (-10000, 10000)
 
-H5FILE_NAME = 'testh5file.h5'
+H5FILE_NAME = 'test_h5_file.h5'
 DATASET_NAME = 'fakedataset'
-JSON_FILE_NAME = 'testjsonfile.json'
-
+JSON_FILE_NAME = 'test_json_file.json'
 
 class Hdf5todosnaTest(unittest.TestCase):
     """
@@ -86,6 +86,10 @@ class Hdf5todosnaTest(unittest.TestCase):
         group_A.del_group('B')
         self.connection_handle.del_group('A')
         self.connection_handle.disconnect()
+        if os.path.isfile(H5FILE_NAME):
+            os.remove(H5FILE_NAME)
+        if os.path.isfile(JSON_FILE_NAME):
+            os.remove(JSON_FILE_NAME)
 
     def test_hdf5_equals_dosnadict(self):
         hdf5dict = self.hdftodn.hdf5_to_dict()
