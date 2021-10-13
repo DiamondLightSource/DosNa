@@ -343,7 +343,7 @@ class MemGroup(BackendGroup):
         group = _find_group(path_elements, links)
 
         if group is None:
-            raise GroupNotFoundError("Group", path, "not found")
+            raise DatasetNotFoundError("Dataset", path, "not found")
         else:
             return group
 
