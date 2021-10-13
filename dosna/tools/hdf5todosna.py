@@ -154,26 +154,3 @@ class Hdf5todosna(object):
             f.write(json.dumps(jsondict, default=json_encoder))
 
         return jsondict
-
-    def json_to_dosna(self, jsonfile, dosnaobject):
-
-        with open(jsonfile, 'r') as f:
-            jsonstring = f.read()
-        jsondict = json.loads(jsonstring)
-
-        def _recurse(jsondict, dosnadict, group):
-            for key, value in jsondict.items():
-                if not _IS_DATASET in value:
-                    if key != _ATTRS:
-                        subgroup = group.get_group(key)
-                        dosnadict[key] = dict()
-                        dosnadict[key][_ATTRS] = value[_ATTRS]
-                        dosnadict[key] = _recurse(value, dosnadict[key], subgroup)
-                else:
-                    dataset = group.get_dataset(key)
-                    dosnadict[key] = dataset
-
-            return dosnadict
-
-        dosnadict = _recurse(jsondict, {}, dosnaobject)
-        return dosnadict
