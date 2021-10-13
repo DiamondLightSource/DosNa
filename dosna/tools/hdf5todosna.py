@@ -113,8 +113,9 @@ class Hdf5todosna(object):
         dn_connection = _recurse(hdf_dict, dn_connection)
         return dn_connection
 
-    def hdf5dict_to_json(self, hdf_file, jsonfile):
-        hdf_dict = self.hdf5_to_dict(hdf_file)
+    def hdf2json(self, hdf_file, jsonfile):
+        hdfdict = self.hdf2dict(hdf_file)
+
         def _recurse(hdf5dict, jsondict):
             for key, value in hdf5dict.items():
                 if isinstance(value, dict) and key != _ATTRS:
