@@ -26,7 +26,7 @@ def hdf_file(hdf, *args, **kwargs):
 
 def bytes_to_mb(size_bytes):
     if size_bytes == 0:
-        return "0B"
+        return 0.0
     return round((size_bytes / 1024 / 1024), 2)
 
 _SHAPE = 'shape'
