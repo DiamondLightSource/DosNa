@@ -1,19 +1,11 @@
 #!/usr/bin/env python
 """ Tool to translate HDF5 files to DosNa"""
 
-import logging
-
 import numpy as np
 
-import os
 import h5py
 import json
-import dosna as dn
 from contextlib import contextmanager
-from dosna.tools.hdf5todosna import Hdf5todosna
-from dosna.backends import Backend
-from dosna.backends.base import (BackendConnection, BackendDataChunk,
-                                 BackendDataset, DatasetNotFoundError)
 
 _SHAPE = 'shape'
 _DTYPE = 'dtype'
