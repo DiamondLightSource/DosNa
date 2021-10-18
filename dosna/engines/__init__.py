@@ -15,7 +15,6 @@ _current = None
 Engine = namedtuple('Engine', ['name', 'Connection', 'Dataset', 'DataChunk',
                                'params'])
 
-
 def use_engine(engine, **kwargs):
     engine = engine.lower()
     global _current
