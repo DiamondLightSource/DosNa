@@ -127,42 +127,42 @@ class Dosnatohdf5(object):
 
         return jsondict
 
-    def json_to_hdf5(self, jsonfile, h5file):
-
-        with open(jsonfile, 'r') as f:
-            jsondict = json.loads(f.read())
-
-        def _recurse(jsondict, hdf5dict, group):
-            for key, value in jsondict.items():
-                if isinstance(value, dict):
-                    if not _IS_DATASET in value:
-                        subgroup = group.get(key)
-                        _recurse(value, hdf5dict, subgroup)
-                    else:
-                        dataset = group.get(key)
-
-        with h5py.File(h5file, "r") as hdf:
-            _recurse(jsondict, {}, hdf)
-            return hdf
-
-    def hdf5file_to_hdf5dict(self, hdf5file):
-        def load(hdf):
-            def _recurse(hdfobject, datadict):
-                for key, value in hdfobject.items():
-                    if isinstance(value, h5py.Group):
-                        datadict[key] = dict()
-                        attrs = dict()
-                        for k, v in value.attrs.items():
-                            attrs[k] = v
-                        datadict[key][_ATTRS] = attrs
-                        datadict[key] = _recurse(value, datadict[key])
-                    elif isinstance(value, h5py.Dataset):
-                        datadict[key] = value
-                return datadict
-
-            with hdf_file(hdf) as hdf:
-                data = dict(_h5file=hdf)
-                return _recurse(hdf, data)
-
-        hdf5dict = load(hdf5file)
-        return hdf5dict
+    # def json_to_hdf5(self, jsonfile, h5file):
+    #
+    #     with open(jsonfile, 'r') as f:
+    #         jsondict = json.loads(f.read())
+    #
+    #     def _recurse(jsondict, hdf5dict, group):
+    #         for key, value in jsondict.items():
+    #             if isinstance(value, dict):
+    #                 if not _IS_DATASET in value:
+    #                     subgroup = group.get(key)
+    #                     _recurse(value, hdf5dict, subgroup)
+    #                 else:
+    #                     dataset = group.get(key)
+    #
+    #     with h5py.File(h5file, "r") as hdf:
+    #         _recurse(jsondict, {}, hdf)
+    #         return hdf
+    #
+    # def hdf5file_to_hdf5dict(self, hdf5file):
+    #     def load(hdf):
+    #         def _recurse(hdfobject, datadict):
+    #             for key, value in hdfobject.items():
+    #                 if isinstance(value, h5py.Group):
+    #                     datadict[key] = dict()
+    #                     attrs = dict()
+    #                     for k, v in value.attrs.items():
+    #                         attrs[k] = v
+    #                     datadict[key][_ATTRS] = attrs
+    #                     datadict[key] = _recurse(value, datadict[key])
+    #                 elif isinstance(value, h5py.Dataset):
+    #                     datadict[key] = value
+    #             return datadict
+    #
+    #         with hdf_file(hdf) as hdf:
+    #             data = dict(_h5file=hdf)
+    #             return _recurse(hdf, data)
+    #
+    #     hdf5dict = load(hdf5file)
+    #     return hdf5dict
