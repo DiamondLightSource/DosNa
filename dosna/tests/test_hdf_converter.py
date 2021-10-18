@@ -9,7 +9,7 @@ import h5py
 import dosna as dn
 from dosna.tests import configure_logger
 
-from dosna.tools.hdfconverter import HdfConverter
+from dosna.tools.hdf_converter import HdfConverter
 
 log = logging.getLogger(__name__)
 
