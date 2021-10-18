@@ -9,7 +9,7 @@ from numpy.testing import assert_array_equal
 import dosna as dn
 from dosna.tests import configure_logger
 
-from dosna.tools.dosnatohdf5 import Dosnatohdf5
+from dosna.tools.dosna_converter import Dosnatohdf5
 
 log = logging.getLogger(__name__)
 
