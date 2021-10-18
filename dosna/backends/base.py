@@ -284,8 +284,12 @@ class BackendDataset(object):
         squeeze_axis = []
         for index, slice_ in enumerate(slices):
             if isinstance(slice_, int):
-                final_slices.append(slice(slice_, slice_ + 1))
-                squeeze_axis.append(index)
+                if slice_ < shape[index]:
+                    final_slices.append(slice(slice_, slice_ + 1))
+                    squeeze_axis.append(index)
+                else:
+                    raise IndexError("index {} is out of bounds for axis {} with size {}"
+                                     .format(slice_, index, shape[index]))
             elif isinstance(slice_, slice):
                 start = slice_.start
                 stop = slice_.stop
