@@ -8,7 +8,7 @@ import numpy as np
 import rados
 from dosna.backends import Backend
 from dosna.backends.base import (BackendConnection, BackendDataChunk,
-                                 BackendDataset, ConnectionError,
+                                 BackendDataset, BackendGroup, BackendLink, ConnectionError,
                                  DatasetNotFoundError)
 from dosna.util import dtype2str, shape2str, str2shape
 from dosna.util.data import slices2shape
@@ -55,6 +55,21 @@ class CephConnection(BackendConnection):
     @property
     def ioctx(self):
         return self._ioctx
+
+    def create_group(self, name, attrs={}):
+        raise NotImplementedError('`create_group` not implemented '
+                                  'for this backend')
+
+    def get_group(self):
+        raise NotImplementedError('`get_group` not implemented '                           'for this backend')
+
+    def has_group(self):
+        raise NotImplementedError('`has_group` not implemented '
+                                  'for this backend')
+
+    def del_group(self):
+        raise NotImplementedError('`del_group` not implemented '
+                                  'for this backend')
 
     def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
                        data=None, chunk_size=None):
@@ -113,6 +128,58 @@ class CephConnection(BackendConnection):
         else:
             raise DatasetNotFoundError(
                 'Dataset `{}` does not exist'.format(name))
+
+class CephLink(BackendLink):
+    def __init__(self, source, target, name):
+        super(CephLink, self).__init__(source, target, name)
+
+    def get_source(self):
+        return self.source
+
+    def get_target(self):
+        return self.target
+
+    def get_name(self):
+        return self.name
+
+
+class CephGroup(BackendGroup):
+    def __init__(self, parent, name, attrs, path_split="/", *args, **kwargs):
+        super(CephGroup, self).__init__(parent, name, attrs)
+
+    def create_group(self, parent, name, attrs={}):
+        raise NotImplementedError('`create_group` not implemented '
+                                  'for this backend')
+
+    def get_group(self):
+        raise NotImplementedError('`get_group` not implemented '
+                                  'for this backend')
+
+    def has_group(self):
+        raise NotImplementedError('`has_group` not implemented '
+                                  'for this backend')
+
+    def del_group(self):
+        raise NotImplementedError('`del_group` not implemented '
+                                  'for this backend')
+
+    def create_dataset(self, name, shape=None, dtype=np.float32, fillvalue=0,
+                       data=None, chunk_size=None):
+        raise NotImplementedError('`create_dataset` not implemented '
+                                  'for this backend')
+
+    def get_dataset(self, name):
+        raise NotImplementedError('`get_dataset` not implemented '
+                                  'for this backend')
+
+    def has_dataset(self, name):
+        raise NotImplementedError('`has_dataset` not implemented '
+                                  'for this backend')
+
+    def del_dataset(self, name):
+        """Remove dataset metadata only"""
+        raise NotImplementedError('`del_dataset` not implemented '
+                                  'for this backend')
 
 
 class CephDataset(BackendDataset):
