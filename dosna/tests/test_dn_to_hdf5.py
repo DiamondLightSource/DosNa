@@ -23,136 +23,181 @@ DATA_CHUNK_SIZE = (32, 32, 32)
 SEQUENTIAL_TEST_PARTS = 3
 DATASET_NUMBER_RANGE = (-10000, 10000)
 
-H5FILE_NAME = 'test_unit_file.h5'
+H5FILE_NAME = 'test_h5_file.h5'
 DATASET_NAME = 'fakedataset'
+JSON_FILE_NAME = 'test_json_file.json'
 
 
 class Hdf5todosnaTest(unittest.TestCase):
     """
     Test HDF5 to DosNa methods
     """
-    connection_handle = None
-
     @classmethod
     def setUpClass(cls):
         dn.use(backend=BACKEND, engine=ENGINE)
-        cls.connection_handle = dn.Connection(**CONNECTION_CONFIG)
-        cls.connection_handle.connect()
-        cls.dntohdf = Dosnatohdf5(cls.connection_handle)
+        cls.dn_connection = dn.Connection(**CONNECTION_CONFIG)
+        cls.dn_connection.connect()
+        cls.dn_converter = Dosnatohdf5(cls.dn_connection)
 
     @classmethod
     def tearDownClass(cls):
-        cls.connection_handle.disconnect()
+        cls.dn_connection.disconnect()
 
     def setUp(self):
 
-        group_A = self.connection_handle.create_group("A", {'A1': 'V1', 'A2': 'V2'})
+        group_A = self.dn_connection.create_group("A", {'A1': 'V1', 'A2': 'V2'})
         group_B = group_A.create_group("B")
         group_C = group_A.create_group("C", {'C1': 'V1'})
         group_D = group_B.create_group("D")
 
-        self.data = np.random.random_integers(DATASET_NUMBER_RANGE[0],
-                                              DATASET_NUMBER_RANGE[1],
-                                              DATA_SIZE)
-        dset1 = group_B.create_dataset('dset1', shape=DATA_SIZE, chunk_size=DATA_CHUNK_SIZE)
-        dset2 = group_B.create_dataset('dset2', data=self.data, chunk_size=DATA_CHUNK_SIZE)
+        data1 = np.random.randint(DATASET_NUMBER_RANGE[0], DATASET_NUMBER_RANGE[1]+1, DATA_SIZE)
+        dset1 = group_B.create_dataset('dset1', data=data1)
+        data2 = np.random.randint(DATASET_NUMBER_RANGE[0], DATASET_NUMBER_RANGE[1] + 1, DATA_SIZE)
+        dset2 = group_B.create_dataset('dset2', data=data2, chunk_size=DATA_CHUNK_SIZE)
 
 
 
     def tearDown(self):
-        group_A = self.connection_handle.get_group('A')
-        group_B = group_A.get_group('B')
-        group_C = group_A.get_group('C')
-        group_D = group_B.get_group('D')
+        if self.dn_connection.has_group('A'):
+            group_A = self.dn_connection.get_group('A')
+            group_B = group_A.get_group('B')
+            group_C = group_A.get_group('C')
+            group_D = group_B.get_group('D')
 
-        group_B.del_group('D')
-        group_A.del_group('C')
-        group_A.del_group('B')
-        self.connection_handle.del_group('A')
-        self.connection_handle.disconnect()
+            group_B.del_group('D')
+            group_A.del_group('C')
+            group_A.del_group('B')
+            self.dn_connection.del_group('A')
+        self.dn_connection.disconnect()
         if os.path.isfile(H5FILE_NAME):
             os.remove(H5FILE_NAME)
+        if os.path.isfile(JSON_FILE_NAME):
+            os.remove(JSON_FILE_NAME)
 
-    def test_same_keys(self):
-        dosnadict = self.dntohdf.dosna_to_dict()
-        self.dntohdf.dosnadict_to_hdf5(dosnadict, H5FILE_NAME)
-        h5_file = h5py.File(H5FILE_NAME)
-        self.assertEqual(set(h5_file.keys()), set(self.connection_handle.root_group.keys()))
-        self.assertEqual(set(h5_file['A'].keys()), set(self.connection_handle['A'].keys()))
-        self.assertEqual(set(h5_file['A/B'].keys()), set(self.connection_handle['A/B'].keys()))
-        self.assertEqual(set(h5_file['A/B/D'].keys()), set(self.connection_handle['A/B/D'].keys()))
-        self.assertEqual(set(h5_file['A/C'].keys()), set(self.connection_handle['A/C'].keys()))
-        h5_file.close()
+    def check_keys(self, expected_key, dictionary):
+        idx = 0
+        for key in dictionary:
+            if key == "attrs":
+                continue
+            self.assertEqual(list(expected_key)[idx], key)
+            idx += 1
 
-    def test_same_attrs(self):
-        dosnadict = self.dntohdf.dosna_to_dict()
-        self.dntohdf.dosnadict_to_hdf5(dosnadict, H5FILE_NAME)
-        h5_file = h5py.File(H5FILE_NAME)
 
-        dn_attributes = self.connection_handle['A'].attrs
-        h5_attributes = h5_file['A'].attrs
-        self.assertEqual(dn_attributes, h5_attributes)
+    def compare_datasets_dosna(self, dset1, dset2):
+        self.assertEqual(dset1.name, dset2.name)
+        self.assertEqual(dset1.get_absolute_path(), dset2.get_absolute_path())
+        self.assertEqual(dset1.shape, dset2.shape)
+        self.assertEqual(dset1.dtype, dset2.dtype)
+        self.assertEqual(dset1.ndim, dset2.ndim)
+        self.assertEqual(dset1.fillvalue, dset2.fillvalue)
+        self.assertIsNone(np.testing.assert_array_equal(dset1.chunk_size, dset2.chunk_size))
+        self.assertIsNone(np.testing.assert_array_equal(dset1.chunk_grid, dset2.chunk_grid))
+        self.assertIsNone(np.testing.assert_array_equal(dset1.total_chunks, dset2.total_chunks))
+        for hdf, dn in zip(dset1, dset2):
+            self.assertIsNone(assert_array_equal(hdf, dn))
+        for i in range(0, dset1.total_chunks):
+            idx = dset1._idx_from_flat(i)
+            self.assertIsNone(assert_array_equal(dset1[idx], dset2[idx]))
 
-        h5_file.close()
+    def compare_datasets_hdf(self, dn_dset, hdf_dset):
+        self.assertEqual(dn_dset.get_absolute_path(), hdf_dset.name)
+        self.assertEqual(hdf_dset.shape, dn_dset.shape)
+        self.assertEqual(hdf_dset.dtype, dn_dset.dtype)
+        self.assertEqual(hdf_dset.ndim, dn_dset.ndim)
+        self.assertEqual(hdf_dset.fillvalue, dn_dset.fillvalue)
+        for hdf, dn in zip(hdf_dset, dn_dset):
+            self.assertIsNone(assert_array_equal(hdf, dn))
+        if hdf_dset.chunks is not None:
+            self.assertEqual(hdf_dset.chunks, dn_dset.chunk_size)
+            for i in range(0, dn_dset.total_chunks):
+                idx = dn_dset._idx_from_flat(i)
+                self.assertIsNone(assert_array_equal(dn_dset[idx], hdf_dset[idx]))
 
-    def test_same_dataset_attrs(self):
-        dosnadict = self.dntohdf.dosna_to_dict()
-        self.dntohdf.dosnadict_to_hdf5(dosnadict, H5FILE_NAME)
-        dn_dset = self.connection_handle['A/B'].get_dataset('dset1')
-        h5_file = h5py.File(H5FILE_NAME)
-        h5_dset = h5_file["/A/B/dset1"]
+    def compare_datasets_json(self, dn_dset, json_dset):
+        self.assertEqual(dn_dset.get_absolute_path(), json_dset["absolute_path"])
+        self.assertEqual(dn_dset.name, json_dset["name"])
+        self.assertEqual(dn_dset.shape, json_dset["shape"])
+        self.assertEqual(dn_dset.dtype, json_dset["dtype"])
+        self.assertEqual(dn_dset.ndim, json_dset["ndim"])
+        self.assertEqual(dn_dset.fillvalue, json_dset["fillvalue"])
+        self.assertEqual(dn_dset.chunk_size, json_dset["chunk_size"])
+        self.assertIsNone(np.testing.assert_array_equal(dn_dset.chunk_grid, json_dset["chunk_grid"]))
+        for d1, d2 in zip(dn_dset, json_dset['dataset_value']):
+            self.assertIsNone(assert_array_equal(d1, d2))
 
-        self.assertEqual(h5_dset.shape, dn_dset.shape)
-        self.assertEqual(h5_dset.dtype, dn_dset.dtype)
-        self.assertEqual(h5_dset.chunks, dn_dset.chunk_size)
-        for hdf, dns in zip(h5_dset, dn_dset):
-            assert_array_equal(hdf, dns)
 
-    def test_same_dataset_chunks(self):
-        dn_dset = self.connection_handle["A/B"].get_dataset("dset2")
+    def test_dosna2dict(self):
+        dosna_dict = self.dn_converter.dosna2dict()
+        dn_cluster = self.dn_connection
 
-        dosnadict = self.dntohdf.dosna_to_dict()
-        self.dntohdf.dosnadict_to_hdf5(dosnadict, H5FILE_NAME)
+        self.assertDictEqual(dn_cluster['A'].attrs, dosna_dict['A']['attrs'])
+        self.assertEqual(dn_cluster['A']['B'].attrs, dosna_dict['A']['B']['attrs'])
+        self.assertEqual(dn_cluster['A']['B']['D'].attrs, dosna_dict['A']['B']['D']['attrs'])
+        self.assertEqual(dn_cluster['A']['C'].attrs, dosna_dict['A']['C']['attrs'])
 
-        h5_file = h5py.File(H5FILE_NAME)
-        h5_dset = h5_file["/A/B/dset2"]
-        for chunk in h5_dset.iter_chunks():
-            assert_array_equal(dn_dset[chunk], h5_dset[chunk])
+        self.check_keys(dn_cluster['A'].keys(), dosna_dict['A'])
+        self.check_keys(dn_cluster['A']['B'].keys(), dosna_dict['A']['B'])
+        self.check_keys(dn_cluster['A']['B']['D'].keys(), dosna_dict['A']['B']['D'])
+        self.check_keys(dn_cluster['A']['C'].keys(), dosna_dict['A']['C'])
 
-    def test_same_dosnadict(self):
-        dosnadict = self.dntohdf.dosna_to_dict()
-        self.dntohdf.dosnadict_to_hdf5(dosnadict, H5FILE_NAME)
+        dn_cluster_dset1 = dn_cluster['A']['B']['dset1']
+        dosna_dict_dset1 = dosna_dict['A']['B']['dset1']
+        self.compare_datasets_dosna(dn_cluster_dset1, dosna_dict_dset1)
 
-        new_connection = dn.Connection('test_second_connection')
-        hdftodn = Hdf5todosna(H5FILE_NAME, new_connection)
-        hdfdict = hdftodn.hdf2dict()
-        second_dosnadict = hdftodn.hdf5dict_to_dosna(hdfdict, new_connection)
-        print(dosnadict)
-        print(second_dosnadict)
-        # Keys Check
-        self.assertEqual(set(dosnadict.keys()), set(second_dosnadict.keys()))
-        self.assertEqual(set(dosnadict['A'].keys()), set(second_dosnadict['A'].keys()))
-        self.assertEqual(set(dosnadict['A']['B'].keys()), set(second_dosnadict['A']['B'].keys()))
-        self.assertEqual(set(dosnadict['A']['B']['D'].keys()), set(second_dosnadict['A']['B']['D'].keys()))
-        self.assertEqual(set(dosnadict['A']['C'].keys()), set(second_dosnadict['A']['C'].keys()))
+        dn_cluster_dset2 = dn_cluster['A']['B']['dset2']
+        dosna_dict_dset2 = dosna_dict['A']['B']['dset2']
+        self.compare_datasets_dosna(dn_cluster_dset2, dosna_dict_dset2)
 
-        # Attributes Check
-        self.assertEqual((dosnadict['A']['attrs']), (second_dosnadict['A']['attrs']))
-        self.assertEqual((dosnadict['A']['B']['attrs']), (second_dosnadict['A']['B']['attrs']))
-        self.assertEqual((dosnadict['A']['B']['D']['attrs']), (second_dosnadict['A']['B']['D']['attrs']))
-        self.assertEqual((dosnadict['A']['C']['attrs']), (second_dosnadict['A']['C']['attrs']))
-        # self.assertDictEqual(dosnadict,second_dosnadict)
-        # Data Check
-        dosnadict_dset1 = dosnadict['A']['B']['dset1']
-        second_dosnadict_dset1 = second_dosnadict['A']['B']['dset1']
-        for dn_d1, s_dn_d1 in zip(dosnadict_dset1, second_dosnadict_dset1):
-            np.testing.assert_array_equal(dn_d1, s_dn_d1)
-        dosnadict_dset2 = dosnadict['A']['B']['dset2']
-        second_dosnadict_dset2 = second_dosnadict['A']['B']['dset2']
-        for dn_d2, s_dn_d2 in zip(dosnadict_dset2, second_dosnadict_dset2):
-            np.testing.assert_array_equal(dn_d2, s_dn_d2)
-        # print("DOSNA DICT:")
-        # print(dosnadict)
+    def test_dosna2hdf(self):
+        self.dn_converter.dosna2hdf(H5FILE_NAME)
+        hdf_file = h5py.File(H5FILE_NAME)
+        dn_cluster = self.dn_connection
+
+        hdf_file_attrs = dict(attr for attr in hdf_file['A'].attrs.items())
+        self.assertDictEqual(hdf_file_attrs, dn_cluster['A'].attrs)
+        hdf_file_attrs = dict(attr for attr in hdf_file['A']['B'].attrs.items())
+        self.assertEqual(hdf_file_attrs, dn_cluster['A']['B'].attrs)
+        hdf_file_attrs = dict(attr for attr in hdf_file['A']['B']['D'].attrs.items())
+        self.assertEqual(hdf_file_attrs, dn_cluster['A']['B']['D'].attrs)
+        hdf_file_attrs = dict(attr for attr in hdf_file['A']['C'].attrs.items())
+        self.assertEqual(hdf_file_attrs, dn_cluster['A']['C'].attrs)
+
+        self.assertEqual(set(hdf_file.keys()), set(dn_cluster.root_group.keys()))
+        self.assertEqual(set(hdf_file['A'].keys()), set(dn_cluster['A'].keys()))
+        self.assertEqual(set(hdf_file['A']['B'].keys()), set(dn_cluster['A']['B'].keys()))
+        self.assertEqual(set(hdf_file['A']['B']['D'].keys()), set(dn_cluster['A']['B']['D'].keys()))
+        self.assertEqual(set(hdf_file['A']['C'].keys()), set(dn_cluster['A']['C'].keys()))
+
+        hdf_file_dset1 = hdf_file['A']['B']['dset1']
+        dn_cluster_dset1 = dn_cluster['A']['B']['dset1']
+        self.compare_datasets_hdf(dn_cluster_dset1, hdf_file_dset1)
+
+        hdf_file_dset2 = hdf_file['A']['B']['dset2']
+        dn_cluster_dset2 = dn_cluster['A']['B']['dset2']
+        self.compare_datasets_hdf(dn_cluster_dset2, hdf_file_dset2)
+        hdf_file.close()
+
+    def test_dosna2json(self):
+        json_dict = self.dn_converter.dosna2json(JSON_FILE_NAME)
+        dn_cluster = self.dn_connection
+
+        self.assertDictEqual(dn_cluster['A'].attrs, json_dict['A']['attrs'])
+        self.assertEqual(dn_cluster['A']['B'].attrs, json_dict['A']['B']['attrs'])
+        self.assertEqual(dn_cluster['A']['B']['D'].attrs, json_dict['A']['B']['D']['attrs'])
+        self.assertEqual(dn_cluster['A']['C'].attrs, json_dict['A']['C']['attrs'])
+
+        self.check_keys(dn_cluster['A'].keys(), json_dict['A'])
+        self.check_keys(dn_cluster['A']['B'].keys(), json_dict['A']['B'])
+        self.check_keys(dn_cluster['A']['B']['D'].keys(), json_dict['A']['B']['D'])
+        self.check_keys(dn_cluster['A']['C'].keys(), json_dict['A']['C'])
+
+        dn_cluster_dset1 = dn_cluster['A']['B']['dset1']
+        json_dict_dset1 = json_dict['A']['B']['dset1']
+        self.compare_datasets_json(dn_cluster_dset1, json_dict_dset1)
+
+        dn_cluster_dset2 = dn_cluster['A']['B']['dset2']
+        json_dict_dset2 = json_dict['A']['B']['dset2']
+        self.compare_datasets_json(dn_cluster_dset2, json_dict_dset2)
 
 def main():
     configure_logger(log)
