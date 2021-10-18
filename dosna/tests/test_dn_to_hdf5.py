@@ -7,11 +7,9 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 import dosna as dn
-from dosna.backends.base import DatasetNotFoundError
 from dosna.tests import configure_logger
 
 from dosna.tools.dosnatohdf5 import Dosnatohdf5
-from dosna.tools.hdf5todosna import Hdf5todosna
 
 log = logging.getLogger(__name__)
 
