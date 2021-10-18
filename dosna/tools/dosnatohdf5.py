@@ -106,12 +106,16 @@ class Dosnatohdf5(object):
                 else:
                     jsondict[key] = dict()
                     jsondict[key][_DATASET_NAME] = key
+                    jsondict[key][_ABSOLUTE_PATH] = value.get_absolute_path()
                     jsondict[key][_SHAPE] = value.shape
-                    jsondict[key][_DTYPE] = str(value.dtype)
-                    jsondict[key][_FILLVALUE] = value.fillvalue
+                    jsondict[key][_NDIM] = value.ndim
+                    jsondict[key][_DTYPE] = value.dtype.str
+                    jsondict[key][_FILLVALUE] = float(value.fillvalue)
                     jsondict[key][_CHUNK_SIZE] = value.chunk_size
                     jsondict[key][_CHUNK_GRID] = value.chunk_grid.tolist()
                     jsondict[key][_IS_DATASET] = True
+                    data = value[:]
+                    jsondict[key][_DATASET_VALUE] = data.tolist()
             return jsondict
 
         jsondict = _recurse(dosnadict, {})
