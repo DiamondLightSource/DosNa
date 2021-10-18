@@ -44,7 +44,7 @@ class Dosnatohdf5(object):
     def __init__(self, connection):
         self._connection = connection
 
-    def dosna_to_dict(self):
+    def dosna2dict(self):
 
         def _recurse(group, links, dosnadict):
             for key, value in links.items():
@@ -62,7 +62,8 @@ class Dosnatohdf5(object):
 
         return dosnadict
 
-    def dosnadict_to_hdf5(self, dosnadict, h5file):
+    def dosna2hdf(self, h5file):
+        dosnadict = self.dosna2dict()
 
         def _recurse(dosnadict, hdfobject):
             for key, value in dosnadict.items():
@@ -93,7 +94,8 @@ class Dosnatohdf5(object):
             _recurse(dosnadict, hdf)
             return hdf
 
-    def dosnadict_to_jsondict(self, dosnadict, jsonfile):
+    def dosna2json(self, jsonfile):
+        dosnadict = self.dosna2dict()
         def _recurse(dosnadict, jsondict):
             for key, value in dosnadict.items():
                 if isinstance(value, dict):
